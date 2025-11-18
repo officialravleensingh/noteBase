@@ -44,7 +44,7 @@ const signup = async (req, res) => {
       user
     });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error : ${error}`  });
   }
 };
 
@@ -83,7 +83,7 @@ const login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: `Server error : ${error}` });
   }
 };
 
