@@ -32,21 +32,10 @@ const signup = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokenPair(user.id);
 
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000 // 1 hour
-    });
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
     res.status(201).json({
       message: 'User created successfully',
+      accessToken,
+      refreshToken,
       user
     });
   } catch (error) {
@@ -77,21 +66,10 @@ const login = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokenPair(user.id);
 
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000 // 1 hour
-    });
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
     res.json({
       message: 'Login successful',
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         email: user.email,

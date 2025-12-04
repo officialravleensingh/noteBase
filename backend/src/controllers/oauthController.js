@@ -141,21 +141,19 @@ const googleCallback = async (req, res) => {
       return res.redirect(`${frontendUrl}/login?error=token_generation_failed`);
     }
 
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000 // 1 hour
-    });
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
     const frontendUrl = process.env.FRONTEND_URL;
-    res.redirect(`${frontendUrl}/dashboard?auth=success`);
+    const tokenData = encodeURIComponent(JSON.stringify({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: picture
+      }
+    }));
+    
+    res.redirect(`${frontendUrl}/auth/google/callback?tokens=${tokenData}`);
 
   } catch (error) {
     console.error('OAuth callback unexpected error:', error);

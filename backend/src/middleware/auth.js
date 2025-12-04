@@ -3,7 +3,18 @@ const { prisma } = require('../db/database');
 
 const authenticate = async (req, res, next) => {
   try {
-    const token = req.cookies.accessToken;
+    const authHeader = req.header('Authorization');
+    
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Access denied. No authorization header provided.' });
+    }
+
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Invalid authorization format. Use Bearer token.' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
     if (!token || token.trim() === '') {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
@@ -48,7 +59,7 @@ const authenticate = async (req, res, next) => {
 
 const handleTokenRefresh = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.header('x-refresh-token');
     if (!refreshToken || refreshToken.trim() === '') {
       return res.status(401).json({ error: 'Access token expired. No refresh token provided.' });
     }
@@ -86,19 +97,8 @@ const handleTokenRefresh = async (req, res, next) => {
       return res.status(500).json({ error: 'Failed to generate new tokens.' });
     }
     
-    // Set new httpOnly cookies
-    res.cookie('accessToken', tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000 // 1 hour
-    });
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
+    res.set('x-access-token', tokens.accessToken);
+    res.set('x-refresh-token', tokens.refreshToken);
     
     req.user = user;
     next();

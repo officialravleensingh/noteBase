@@ -11,9 +11,17 @@ const apiRequest = async (endpoint, options = {}) => {
     
     const url = `${API_URL}${endpoint}`;
     
+    // Get tokens from localStorage
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+    
     const config = {
-      headers: {'Content-Type': 'application/json',...options.headers},
-      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+        ...(refreshToken && { 'x-refresh-token': refreshToken }),
+        ...options.headers
+      },
       ...options
     };
     if (options.body && typeof options.body === 'object') {
@@ -30,6 +38,17 @@ const apiRequest = async (endpoint, options = {}) => {
     } catch (networkError) {
       console.error('Network error:', networkError.message);
       throw new Error('Network error. Please check your connection.');
+    }
+    
+    // Check for new tokens in response headers
+    const newAccessToken = response.headers.get('x-access-token');
+    const newRefreshToken = response.headers.get('x-refresh-token');
+    
+    if (newAccessToken) {
+      localStorage.setItem('accessToken', newAccessToken);
+    }
+    if (newRefreshToken) {
+      localStorage.setItem('refreshToken', newRefreshToken);
     }
     
     let data;

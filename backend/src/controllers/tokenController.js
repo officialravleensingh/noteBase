@@ -3,7 +3,7 @@ const { prisma } = require('../db/database');
 
 const refreshToken = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const { refreshToken } = req.body;
     if (!refreshToken) {
       return res.status(401).json({ error: 'Refresh token required' });
     }
@@ -19,20 +19,11 @@ const refreshToken = async (req, res) => {
 
     const { accessToken, refreshToken: newRefreshToken } = generateTokenPair(user.id);
 
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 1000 // 1 hour
+    res.json({
+      message: 'Tokens refreshed successfully',
+      accessToken,
+      refreshToken: newRefreshToken
     });
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
-    res.json({message: 'Tokens refreshed successfully'});
   } catch (error) {
     res.status(401).json({ error: 'Invalid refresh token' });
   }

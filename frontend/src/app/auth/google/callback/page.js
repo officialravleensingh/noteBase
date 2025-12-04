@@ -13,17 +13,30 @@ export default function GoogleCallback() {
           return;
         }
 
-        const auth = searchParams.get('auth');
+        const tokens = searchParams.get('tokens');
         const error = searchParams.get('error');
-        if (auth === 'success') {
-          console.log('OAuth authentication successful');
-          router.push('/dashboard');
+        
+        if (tokens) {
+          try {
+            const tokenData = JSON.parse(decodeURIComponent(tokens));
+            
+            // Store tokens in localStorage
+            localStorage.setItem('accessToken', tokenData.accessToken);
+            localStorage.setItem('refreshToken', tokenData.refreshToken);
+            localStorage.setItem('user', JSON.stringify(tokenData.user));
+            
+            console.log('OAuth authentication successful');
+            router.push('/dashboard');
+          } catch (parseError) {
+            console.error('Failed to parse token data:', parseError);
+            router.push('/login?error=token_parse_failed');
+          }
         } else if (error) {
           console.error('OAuth error:', error);
           router.push(`/login?error=${error}`);
         } else {
-          console.warn('OAuth callback without clear status');
-          router.push('/login?error=unknown_status');
+          console.warn('OAuth callback without tokens or error');
+          router.push('/login?error=no_tokens');
         }
       } catch (error) {
         console.error('Callback handling error:', error);

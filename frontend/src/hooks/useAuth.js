@@ -9,37 +9,33 @@ export const useAuth = () => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuth = () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.user);
+      const token = localStorage.getItem('accessToken');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        setUser(JSON.parse(userData));
       }
     } catch (error) {
-      console.log('Not authenticated');
+      console.error('Auth check error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = (userData) => {
+  const login = (userData, accessToken, refreshToken) => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
   };
 
-  const logout = async () => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-    }
+  const logout = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    setUser(null);
   };
 
   return { user, login, logout, loading, checkAuth };
