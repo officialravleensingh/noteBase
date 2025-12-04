@@ -1,21 +1,17 @@
 const express = require('express');
-const { body } = require('express-validator');
 const { signup, login } = require('../controllers/authController');
+const { refreshToken } = require('../controllers/tokenController');
+const { logout } = require('../controllers/logoutController');
+const { getProfile } = require('../controllers/profileController');
+const { authenticate } = require('../middleware/auth');
+const { signupValidation, loginValidation } = require('../middleware/validation');
 
-const app = express();
+const router = express.Router();
 
-const signupValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('name').trim().isLength({ min: 2 })
-];
+router.post('/signup', signupValidation, signup);
+router.post('/login', loginValidation, login);
+router.post('/refresh', refreshToken);
+router.post('/logout', logout);
+router.get('/profile', authenticate, getProfile);
 
-const loginValidation = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').exists()
-];
-
-app.post('/signup', signupValidation, signup);
-app.post('/login', loginValidation, login);
-
-module.exports = app;
+module.exports = router;

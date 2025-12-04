@@ -32,9 +32,7 @@ export default function Login() {
             Sign in to NoteBase
           </h2>
         </div>
-        
         <AuthForm mode="login" onSubmit={handleLogin} loading={loading} />
-        
         <div className="text-center">
           <Link href="/signup" className="text-blue-600 hover:text-blue-500">
             Don't have an account? Sign up

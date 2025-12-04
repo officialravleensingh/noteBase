@@ -17,11 +17,11 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - **Frontend**: Next.js, React Router, TailwindCSS
 - **Backend**: Node.js, Express.js
 - **Database**: MongoDB with Prisma ORM
-- **Authentication**: JWT-based login/signup + bcrypt
+- **Authentication**: JWT-based login/signup + bcrypt + Google OAuth 2.0
 - **AI Integration**: API for summarization and grammar correction
 - **Hosting**: 
-  - Frontend: Vercel/Netlify
-  - Backend: Render/Railway
+  - Frontend: Vercel
+  - Backend: Render
   - Database: MongoDB Atlas
 
 ## API Endpoints
@@ -30,6 +30,9 @@ Frontend → Backend (API) → Database → AI Integration (API)
 |----------|--------|-------------|--------|
 | `/api/auth/signup` | POST | Register new user | Public |
 | `/api/auth/login` | POST | User login | Public |
+| `/api/auth/google` | GET | Initiate Google OAuth | Public |
+| `/api/auth/google/callback` | GET | Handle OAuth callback | Public |
+| `/api/auth/refresh` | POST | Refresh access token | Public |
 | `/api/notes` | GET | Fetch all notes (with search, filter, sort, pagination) | Authenticated |
 | `/api/notes` | POST | Create new note | Authenticated |
 | `/api/notes/:id` | PUT | Update note | Authenticated |
@@ -39,7 +42,10 @@ Frontend → Backend (API) → Database → AI Integration (API)
 ## Key Features
 
 ### Authentication & Authorization
-- JWT login/signup system
+- JWT-based authentication with refresh tokens
+- Google OAuth 2.0 integration for seamless sign-in
+- Email/password registration and login
+- Automatic token refresh for enhanced security
 - Shared-note creator acts as admin for permission control
 
 ### CRUD Operations
@@ -117,30 +123,25 @@ npm install
 npm run dev
 ```
 
-### Environment Variables
+### Environment Configuration
 
-**Backend (.env)**
-```env
-PORT=5000
-NODE_ENV=development
-DATABASE_URL="your_mongodb_connection_string"
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRE=7d
-FRONTEND_URL=http://localhost:3000
-```
+The application requires environment variables for:
+- Database connection
+- JWT authentication secrets
+- Google OAuth credentials
+- API endpoints
+- Server configuration
 
-**Frontend (.env.local)**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-```
+Refer to `.env.example` files in both frontend and backend directories for required variables.
 
 ## Development Phases
 
 ### Phase 1: ✅ Authentication System
-- JWT-based login/signup
-- Protected routes
-- User management
-- Database integration
+- JWT-based login/signup with refresh tokens
+- Google OAuth 2.0 integration
+- Protected routes and middleware
+- User management and tracking
+- Database integration with Prisma
 
 ### Phase 2: 🚧 Notes CRUD Operations
 - Create, read, update, delete notes
@@ -163,11 +164,11 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 - Export functionality
 
 ## Deployment
-
-- **Frontend**: Vercel/Netlify
-- **Backend**: Render/Railway
+- **Frontend**: Vercel with environment variables configured
+- **Backend**: Render with OAuth credentials and database URL
 - **Database**: MongoDB Atlas
-- **Environment**: Production-ready with environment variables
+- **OAuth**: Google Cloud Console configuration
+- **Security**: CORS and security headers enabled
 
 ## Contributing
 

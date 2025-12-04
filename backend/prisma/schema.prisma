@@ -11,9 +11,13 @@ model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
-  name      String
+  name      String?
+  avatar    String?
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+  @@index([createdAt])
 }

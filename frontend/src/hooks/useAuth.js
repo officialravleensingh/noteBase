@@ -6,26 +6,41 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-    }
-    setLoading(false);
+    checkAuth();
   }, []);
 
-  const login = (token, userData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+  const checkAuth = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/profile`, {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData.user);
+      }
+    } catch (error) {
+      console.log('Not authenticated');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = (userData) => {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+    }
   };
 
-  return { user, login, logout, loading };
+  return { user, login, logout, loading, checkAuth };
 };
