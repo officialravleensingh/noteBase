@@ -8,7 +8,6 @@ const authenticate = async (req, res, next) => {
     if (!authHeader) {
       return res.status(401).json({ error: 'Access denied. No authorization header provided.' });
     }
-
     if (!authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Invalid authorization format. Use Bearer token.' });
     }
@@ -29,7 +28,6 @@ const authenticate = async (req, res, next) => {
       console.error('Token verification error:', tokenError.message);
       return res.status(401).json({ error: 'Invalid token format.' });
     }
-
     if (!decoded || !decoded.userId) {
       return res.status(401).json({ error: 'Invalid token payload.' });
     }

@@ -20,7 +20,6 @@ export default function GoogleCallback() {
           try {
             const tokenData = JSON.parse(decodeURIComponent(tokens));
             
-            // Store tokens in localStorage
             localStorage.setItem('accessToken', tokenData.accessToken);
             localStorage.setItem('refreshToken', tokenData.refreshToken);
             localStorage.setItem('user', JSON.stringify(tokenData.user));

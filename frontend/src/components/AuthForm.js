@@ -21,7 +21,12 @@ export default function AuthForm({ mode, onSubmit, loading }) {
     try {
       await onSubmit(formData);
     } catch (err) {
-      setError(err.message);
+      if (err.message.includes('Validation failed') && err.details) {
+        const firstError = err.details[0];
+        setError(firstError.msg || err.message);
+      } else {
+        setError(err.message);
+      }
     }
   };
 

@@ -11,7 +11,6 @@ const apiRequest = async (endpoint, options = {}) => {
     
     const url = `${API_URL}${endpoint}`;
     
-    // Get tokens from localStorage
     const accessToken = localStorage.getItem('accessToken');
     const refreshToken = localStorage.getItem('refreshToken');
     
@@ -40,7 +39,6 @@ const apiRequest = async (endpoint, options = {}) => {
       throw new Error('Network error. Please check your connection.');
     }
     
-    // Check for new tokens in response headers
     const newAccessToken = response.headers.get('x-access-token');
     const newRefreshToken = response.headers.get('x-refresh-token');
     
@@ -60,7 +58,11 @@ const apiRequest = async (endpoint, options = {}) => {
     }
     if (!response.ok) {
       const errorMessage = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(errorMessage);
+      const error = new Error(errorMessage);
+      if (data.details) {
+        error.details = data.details;
+      }
+      throw error;
     }
 
     return data;
@@ -70,51 +72,55 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
+export const signup = async (userData) => {
+  try {
+    if (!userData || !userData.email || !userData.password) {
+      throw new Error('Email and password are required');
+    }
+    return await apiRequest('/auth/signup', {
+      method: 'POST',
+      body: userData,
+    });
+  } catch (error) {
+    console.error('Signup error:', error.message);
+    throw error;
+  }
+};
+
+export const login = async (credentials) => {
+  try {
+    if (!credentials || !credentials.email || !credentials.password) {
+      throw new Error('Email and password are required');
+    }
+    return await apiRequest('/auth/login', {
+      method: 'POST',
+      body: credentials,
+    });
+  } catch (error) {
+    console.error('Login error:', error.message);
+    throw error;
+  }
+};
+
+export const refreshToken = async (refreshToken) => {
+  try {
+    if (!refreshToken) {
+      throw new Error('Refresh token is required');
+    }
+    return await apiRequest('/auth/refresh', {
+      method: 'POST',
+      body: { refreshToken },
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error.message);
+    throw error;
+  }
+};
+
 export const authAPI = {
-  signup: async (userData) => {
-    try {
-      if (!userData || !userData.email || !userData.password) {
-        throw new Error('Email and password are required');
-      }
-      return await apiRequest('/auth/signup', {
-        method: 'POST',
-        body: userData,
-      });
-    } catch (error) {
-      console.error('Signup error:', error.message);
-      throw error;
-    }
-  },
-  
-  login: async (credentials) => {
-    try {
-      if (!credentials || !credentials.email || !credentials.password) {
-        throw new Error('Email and password are required');
-      }
-      return await apiRequest('/auth/login', {
-        method: 'POST',
-        body: credentials,
-      });
-    } catch (error) {
-      console.error('Login error:', error.message);
-      throw error;
-    }
-  },
-  
-  refreshToken: async (refreshToken) => {
-    try {
-      if (!refreshToken) {
-        throw new Error('Refresh token is required');
-      }
-      return await apiRequest('/auth/refresh', {
-        method: 'POST',
-        body: { refreshToken },
-      });
-    } catch (error) {
-      console.error('Token refresh error:', error.message);
-      throw error;
-    }
-  },
+  signup,
+  login,
+  refreshToken
 };
 
 export default apiRequest;

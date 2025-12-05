@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthForm from '../../components/AuthForm';
-import { authAPI } from '../../lib/api';
+import { login as loginAPI } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function Login() {
@@ -14,8 +14,8 @@ export default function Login() {
   const handleLogin = async (credentials) => {
     setLoading(true);
     try {
-      const response = await authAPI.login(credentials);
-      login(response.token, response.user);
+      const response = await loginAPI(credentials);
+      login(response.user, response.accessToken, response.refreshToken);
       router.push('/dashboard');
     } catch (error) {
       throw error;
