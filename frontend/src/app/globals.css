@@ -1,3 +1,80 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+[contenteditable] {
+  outline: none;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: normal;
+}
+
+[contenteditable]:focus {
+  outline: none;
+}
+
+[contenteditable] ul {
+  list-style-type: disc;
+  margin: 0.5rem 0;
+  padding-left: 2rem;
+}
+
+[contenteditable] ol {
+  list-style-type: decimal;
+  margin: 0.5rem 0;
+  padding-left: 2rem;
+}
+
+[contenteditable] .arrow-list,
+[contenteditable] .dash-list {
+  padding-left: 0;
+}
+
+[contenteditable] li {
+  margin: 0.25rem 0;
+  display: list-item;
+}
+
+[contenteditable] ul li {
+  list-style-type: disc;
+}
+
+[contenteditable] ol li {
+  list-style-type: decimal;
+}
+
+[contenteditable] ul[style*="list-style-type: none"] li {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+[contenteditable] .arrow-list li::before {
+  content: "→";
+  margin-right: 0.25rem;
+  display: inline-block;
+  width: 1rem;
+}
+
+[contenteditable] .arrow-list li {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 1.25rem;
+  position: relative;
+}
+
+[contenteditable] .arrow-list li::before {
+  position: absolute;
+  left: -1.25rem;
+}
+
+[contenteditable] .arrow-list {
+  padding-left: 0;
+  margin-left: 0;
+}

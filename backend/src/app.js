@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
+const notesRoutes = require('./routes/notes');
+const foldersRoutes = require('./routes/folders');
+const exportRoutes = require('./routes/export');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
@@ -37,6 +40,9 @@ if (process.env.NODE_ENV === 'development') {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', oauthRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/folders', foldersRoutes);
+app.use('/api/export', exportRoutes);
 
 
 // Testing endpoint

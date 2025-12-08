@@ -117,6 +117,57 @@ export const refreshToken = async (refreshToken) => {
   }
 };
 
+export const notesAPI = {
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/notes${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => apiRequest(`/notes/${id}`),
+  create: (noteData) => apiRequest('/notes', {
+    method: 'POST',
+    body: noteData
+  }),
+  update: (id, noteData) => apiRequest(`/notes/${id}`, {
+    method: 'PUT',
+    body: noteData
+  }),
+  delete: (id) => apiRequest(`/notes/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+export const foldersAPI = {
+  getAll: () => apiRequest('/folders'),
+  create: (folderData) => apiRequest('/folders', {
+    method: 'POST',
+    body: folderData
+  }),
+  update: (id, folderData) => apiRequest(`/folders/${id}`, {
+    method: 'PUT',
+    body: folderData
+  }),
+  delete: (id) => apiRequest(`/folders/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+export const exportAPI = {
+  generatePDF: async (noteId) => {
+    const accessToken = localStorage.getItem('accessToken');
+    const response = await fetch(`${API_URL}/export/notes/${noteId}/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    if (!response.ok) throw new Error('Failed to generate PDF');
+    return response.blob();
+  },
+  generateShareLink: (noteId) => apiRequest(`/export/notes/${noteId}/share`, {
+    method: 'POST'
+  }),
+  getSharedNote: (shareId) => apiRequest(`/export/shared/${shareId}`)
+};
+
 export const authAPI = {
   signup,
   login,

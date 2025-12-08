@@ -17,7 +17,58 @@ model User {
   lastLogin DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  notes       Note[]
+  folders     Folder[]
+  sharedNotes SharedNote[]
 
   @@map("users")
   @@index([createdAt])
+}
+
+model Note {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String
+  folderId  String?  @db.ObjectId
+  userId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder      Folder?      @relation(fields: [folderId], references: [id])
+  sharedNotes SharedNote[]
+
+  @@map("notes")
+  @@index([userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Folder {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  userId    String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes     Note[]
+
+  @@map("folders")
+  @@index([userId])
+}
+
+model SharedNote {
+  id        String   @id @map("_id")
+  noteId    String   @db.ObjectId
+  userId    String   @db.ObjectId
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shared_notes")
+  @@index([expiresAt])
 }
