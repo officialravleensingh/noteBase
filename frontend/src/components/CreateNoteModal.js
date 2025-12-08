@@ -13,10 +13,18 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
     setLoading(true);
 
     try {
+      const finalFolderId = selectedFolder || (folderId || null);
+      console.log('CreateNoteModal - submitting with:', {
+        selectedFolder,
+        folderId,
+        finalFolderId,
+        title: title.trim()
+      });
+      
       await onCreate({
         title: title.trim(),
         content: '',
-        folderId: selectedFolder || folderId || null
+        folderId: finalFolderId
       });
     } catch (error) {
       console.error('Failed to create note:', error);

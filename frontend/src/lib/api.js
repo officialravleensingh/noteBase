@@ -137,7 +137,10 @@ export const notesAPI = {
 };
 
 export const foldersAPI = {
-  getAll: () => apiRequest('/folders'),
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/folders${queryString ? `?${queryString}` : ''}`);
+  },
   create: (folderData) => apiRequest('/folders', {
     method: 'POST',
     body: folderData

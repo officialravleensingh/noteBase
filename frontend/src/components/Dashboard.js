@@ -70,10 +70,18 @@ export default function Dashboard({ user, logout }) {
   };
 
   const handleCreateNote = async (noteData) => {
+    const finalFolderId = selectedFolder || noteData.folderId || null;
     const noteToCreate = {
       ...noteData,
-      folderId: selectedFolder || noteData.folderId
+      folderId: finalFolderId
     };
+    
+    console.log('Creating note with data:', {
+      selectedFolder,
+      noteDataFolderId: noteData.folderId,
+      finalFolderId,
+      noteToCreate
+    });
     
     try {
       await notesAPI.create(noteToCreate);

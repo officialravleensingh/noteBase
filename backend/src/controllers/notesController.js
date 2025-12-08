@@ -88,6 +88,13 @@ const createNote = async (req, res) => {
     const { title, content, folderId } = req.body;
     const userId = req.user.id;
 
+    console.log('Backend createNote - received data:', {
+      title,
+      content: content ? content.substring(0, 50) + '...' : content,
+      folderId,
+      userId
+    });
+
     // Input validation
     if (title && title.length > 200) {
       return res.status(400).json({ success: false, message: 'Title must be less than 200 characters' });
@@ -154,12 +161,19 @@ const createNote = async (req, res) => {
       }
     }
 
+    const finalFolderId = folderId || null;
+    console.log('Backend createNote - creating note with:', {
+      title: noteTitle,
+      userId,
+      folderId: finalFolderId
+    });
+
     const note = await prisma.note.create({
       data: {
         title: noteTitle,
         content: content?.trim() || '',
         userId,
-        folderId: folderId || null
+        folderId: finalFolderId
       },
       select: {
         id: true,
