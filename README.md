@@ -14,89 +14,194 @@ Frontend → Backend (API) → Database → AI Integration (API)
 
 ## Tech Stack
 
-- **Frontend**: Next.js, React Router, TailwindCSS
-- **Backend**: Node.js, Express.js
-- **Database**: MongoDB with Prisma ORM
-- **Authentication**: JWT-based login/signup + bcrypt + Google OAuth 2.0
-- **AI Integration**: API for summarization and grammar correction
-- **Hosting**: 
-  - Frontend: Vercel
-  - Backend: Render
-  - Database: MongoDB Atlas
+### Frontend
+- **Framework**: Next.js 14 with App Router
+- **Styling**: TailwindCSS with PostCSS
+- **State Management**: React Hooks (useState, useEffect)
+- **Rich Text Editor**: ContentEditable with custom toolbar
+- **HTTP Client**: Fetch API with custom wrapper
+
+### Backend
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database ORM**: Prisma Client
+- **Authentication**: JWT with refresh tokens + bcrypt
+- **OAuth**: Google OAuth 2.0
+- **PDF Generation**: Puppeteer
+- **Validation**: Express Validator
+- **Security**: CORS, Security Headers, Data Encryption
+
+### Database
+- **Database**: MongoDB Atlas
+- **Schema**: Prisma Schema with relations
+- **Models**: User, Note, Folder, SharedNote
+- **Indexing**: Optimized queries with database indexes
+
+### DevOps & Deployment
+- **Frontend Hosting**: Vercel (configured)
+- **Backend Hosting**: Render (configured)
+- **Database**: MongoDB Atlas
+- **Environment**: Development and Production configs
+- **Version Control**: Git with .gitignore for sensitive files
 
 ## API Endpoints
 
+### Authentication Routes
 | Endpoint | Method | Description | Access |
 |----------|--------|-------------|--------|
 | `/api/auth/signup` | POST | Register new user | Public |
 | `/api/auth/login` | POST | User login | Public |
+| `/api/auth/refresh` | POST | Refresh access token | Public |
+| `/api/auth/logout` | POST | User logout | Public |
+| `/api/auth/profile` | GET | Get user profile | Authenticated |
 | `/api/auth/google` | GET | Initiate Google OAuth | Public |
 | `/api/auth/google/callback` | GET | Handle OAuth callback | Public |
-| `/api/auth/refresh` | POST | Refresh access token | Public |
+
+### Notes Management
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
 | `/api/notes` | GET | Fetch all notes (with search, filter, sort, pagination) | Authenticated |
 | `/api/notes` | POST | Create new note | Authenticated |
+| `/api/notes/:id` | GET | Get specific note by ID | Authenticated |
 | `/api/notes/:id` | PUT | Update note | Authenticated |
 | `/api/notes/:id` | DELETE | Delete note | Authenticated |
-| `/api/shared` | POST | Create shared note | Authenticated |
+
+### Folders Management
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/folders` | GET | Fetch all folders | Authenticated |
+| `/api/folders` | POST | Create new folder | Authenticated |
+| `/api/folders/:id` | PUT | Update folder | Authenticated |
+| `/api/folders/:id` | DELETE | Delete folder | Authenticated |
+
+### Export & Sharing
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/export/notes/:id/pdf` | GET | Generate PDF export | Authenticated |
+| `/api/export/notes/:id/share` | POST | Create shareable link | Authenticated |
+| `/api/export/shared/:shareId` | GET | Access shared note | Public |
+
+### System
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/health` | GET | API health check | Public |
 
 ## Key Features
 
-### Authentication & Authorization
+### 🔐 Authentication & Security
 - JWT-based authentication with refresh tokens
 - Google OAuth 2.0 integration for seamless sign-in
 - Email/password registration and login
 - Automatic token refresh for enhanced security
-- Shared-note creator acts as admin for permission control
+- Data encryption for sensitive information
+- Secure password hashing with bcrypt
+- CORS and security headers protection
 
-### CRUD Operations
+### 📝 Note Management
 - Create, Read, Update, Delete notes and folders
-- Full note management lifecycle
+- Rich text editor with advanced formatting
+- Real-time content editing with auto-save
+- Word count tracking
+- Unsaved changes detection and warnings
+- Note organization within folders
 
-### Personalization
-- Dark/Light theme toggle
-- Custom fonts and layouts
-- Personalized user experience
+### 🎨 Rich Text Editing
+- **Text Formatting**: Bold, italic, underline, strikethrough
+- **Text Alignment**: Left, center, right alignment
+- **Lists**: Bullet points, numbered lists, arrow lists
+- **Advanced Features**: Code blocks, superscript, subscript
+- **Media**: Image upload and insertion
+- **Utilities**: Find and replace, text color customization
+- **Keyboard Shortcuts**: Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+F
 
-### Rich Text Editing
-- Bold, italics, bullet points
-- Tables, emojis, image upload
-- Advanced formatting options
+### 🔍 Search & Organization
+- Global search across notes and folders by title/content
+- Advanced sorting (date created/updated, title A-Z/Z-A)
+- Folder-based organization system
+- View filters (notes only, folders only, both)
+- Pagination for optimal performance
+- Bulk operations (select and delete multiple items)
 
-### Search & Organization
-- Search by title/content
-- Sort by last edited date or name
-- Folder-like grouping
-- List/grid view options
+### 📤 Export & Sharing
+- **PDF Export**: Generate and download notes as PDF
+- **Shareable Links**: Create time-limited public links
+- **Public Access**: View shared notes without authentication
+- **Export Modal**: User-friendly export interface
 
-### Advanced Features
-- **Search, Sort, Filter & Pagination**: Optimized data retrieval for large note sets
-- **Collaborative Notes**: Shared notes with customizable permissions
-- **History Tracking**: Admin user tracking for shared notes
-- **Export Functionality**: Notes export as PDFs
-- **AI Integration**: Summarization, grammar correction, and writing suggestions
+### 🎯 User Experience
+- Responsive design with TailwindCSS
+- Intuitive dashboard with sidebar navigation
+- Modal-based workflows for creating notes/folders
+- Real-time feedback and loading states
+- Clean, modern interface design
+- Split-view editor for seamless editing
 
 ## Project Structure
 
 ```
 noteBase/
-├── frontend/                 # Next.js application
+├── frontend/                 # Next.js 14 application
 │   ├── src/
 │   │   ├── app/             # App router pages
+│   │   │   ├── auth/        # Authentication pages
+│   │   │   ├── dashboard/   # Main dashboard
+│   │   │   ├── editor/      # Note editor pages
+│   │   │   ├── login/       # Login page
+│   │   │   ├── signup/      # Signup page
+│   │   │   └── shared/      # Shared notes access
 │   │   ├── components/      # Reusable UI components
+│   │   │   ├── AuthForm.js
+│   │   │   ├── Dashboard.js
+│   │   │   ├── NoteEditor.js
+│   │   │   ├── NoteCard.js
+│   │   │   ├── FolderCard.js
+│   │   │   ├── CreateNoteModal.js
+│   │   │   ├── CreateFolderModal.js
+│   │   │   ├── ExportModal.js
+│   │   │   └── GoogleAuthButton.js
 │   │   ├── hooks/           # Custom React hooks
-│   │   ├── lib/             # API handlers, utilities
-│   │   └── types/           # TypeScript definitions
-│   └── public/              # Static assets
-├── backend/                 # Express.js API
+│   │   │   └── useAuth.js
+│   │   └── lib/             # API handlers, utilities
+│   │       └── api.js
+│   ├── public/              # Static assets
+│   ├── .env.local           # Environment variables
+│   ├── next.config.js       # Next.js configuration
+│   ├── tailwind.config.js   # TailwindCSS configuration
+│   └── package.json
+├── backend/                 # Express.js API server
 │   ├── src/
 │   │   ├── controllers/     # Route handlers
+│   │   │   ├── authController.js
+│   │   │   ├── notesController.js
+│   │   │   ├── foldersController.js
+│   │   │   ├── exportController.js
+│   │   │   ├── oauthController.js
+│   │   │   ├── profileController.js
+│   │   │   ├── tokenController.js
+│   │   │   └── logoutController.js
 │   │   ├── routes/          # API route definitions
-│   │   ├── services/        # Business logic layer
+│   │   │   ├── authRoutes.js
+│   │   │   ├── notes.js
+│   │   │   ├── folders.js
+│   │   │   ├── export.js
+│   │   │   └── oauthRoutes.js
 │   │   ├── middleware/      # Auth, validation, error handling
-│   │   └── utils/           # JWT, bcrypt, helpers
-│   ├── config/              # Database configuration
-│   ├── prisma/              # Database schema
-│   └── server.js            # Server entry point
+│   │   │   ├── auth.js
+│   │   │   ├── validation.js
+│   │   │   ├── errorHandler.js
+│   │   │   └── dataProtection.js
+│   │   ├── utils/           # JWT, bcrypt, helpers
+│   │   │   ├── jwt.js
+│   │   │   ├── bcrypt.js
+│   │   │   └── encryption.js
+│   │   ├── db/              # Database connection
+│   │   │   └── database.js
+│   │   └── app.js           # Express app configuration
+│   ├── prisma/              # Database schema and migrations
+│   │   └── schema.prisma
+│   ├── .env                 # Environment variables
+│   ├── server.js            # Server entry point
+│   └── package.json
 └── README.md
 ```
 
@@ -113,15 +218,30 @@ cd backend
 npm install
 npx prisma generate
 npx prisma db push
-npm run dev
+npm run dev  # Runs on http://localhost:5000
 ```
 
 ### Frontend Setup
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev  # Runs on http://localhost:3000
 ```
+
+### Available Scripts
+
+#### Backend Scripts
+- `npm run dev` - Start development server with nodemon
+- `npm start` - Start production server
+- `npm run build` - Generate Prisma client
+- `npm run prisma:generate` - Generate Prisma client
+- `npm run prisma:push` - Push schema to database
+
+#### Frontend Scripts
+- `npm run dev` - Start Next.js development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
 
 ### Environment Configuration
 
@@ -134,34 +254,55 @@ The application requires environment variables for:
 
 Refer to `.env.example` files in both frontend and backend directories for required variables.
 
-## Development Phases
-
-### Phase 1: ✅ Authentication System
+### Phase 1: ✅ Authentication System (Completed)
 - JWT-based login/signup with refresh tokens
 - Google OAuth 2.0 integration
 - Protected routes and middleware
-- User management and tracking
+- User management and profile system
 - Database integration with Prisma
+- Secure password hashing with bcrypt
+- Data encryption for sensitive information
 
-### Phase 2: 🚧 Notes CRUD Operations
+### Phase 2: ✅ Notes CRUD Operations (Completed)
 - Create, read, update, delete notes
-- Rich text editor integration
-- Note organization
+- Rich text editor with advanced formatting
+- Real-time content editing
+- Word count tracking
+- Auto-save functionality
+- Unsaved changes detection
 
-### Phase 3: 📋 Advanced Features
-- Search, filter, sort, pagination
-- Folder management
-- Collaborative notes
+### Phase 3: ✅ Advanced Features (Completed)
+- Search functionality across notes and folders
+- Sort by date, title (ascending/descending)
+- Pagination for large datasets
+- Folder management system
+- Bulk operations (select and delete multiple items)
+- View filters (notes only, folders only, both)
 
-### Phase 4: 🤖 AI Integration
-- Text summarization
-- Grammar correction
-- Writing suggestions
+### Phase 4: ✅ Export & Sharing (Completed)
+- PDF export functionality
+- Shareable links with expiration
+- Public access to shared notes
+- Export modal with options
 
-### Phase 5: 🎨 Personalization
-- Theme customization
-- Layout preferences
-- Export functionality
+### Phase 5: 🚧 Rich Text Features (In Progress)
+- Bold, italic, underline formatting
+- Text alignment (left, center, right)
+- Lists (bullets, numbers, arrows)
+- Text color customization
+- Code blocks and inline code
+- Superscript and subscript
+- Image upload and insertion
+- Find and replace functionality
+- Strikethrough text
+- Keyboard shortcuts support
+
+### Phase 6: 📋 Upcoming Features
+- AI Integration (text summarization, grammar correction)
+- Theme customization (dark/light mode)
+- Collaborative editing
+- Real-time synchronization
+- Mobile responsiveness improvements
 
 ## Deployment
 - **Frontend**: Vercel with environment variables configured
