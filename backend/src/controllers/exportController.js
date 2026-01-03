@@ -1,18 +1,14 @@
 const puppeteer = require('puppeteer');
 const { v4: uuidv4 } = require('uuid');
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const Note = require('../models/Note');
+const SharedNote = require('../models/SharedNote');
 
 const generatePDF = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const note = await prisma.note.findFirst({
-      where: { id, userId },
-      include: { folder: true }
-    });
+    const note = await Note.findOne({ _id: id, userId }).populate('folderId', 'name');
 
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
@@ -47,7 +43,7 @@ const generatePDF = async (req, res) => {
         <body>
           <h1>${note.title}</h1>
           <div class="meta">
-            ${note.folder ? `Folder: ${note.folder.name} | ` : ''}
+            ${note.folderId ? `Folder: ${note.folderId.name} | ` : ''}
             Created: ${new Date(note.createdAt).toLocaleDateString()}
           </div>
           <div class="content">${note.content}</div>
@@ -78,9 +74,7 @@ const generateShareableLink = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const note = await prisma.note.findFirst({
-      where: { id, userId }
-    });
+    const note = await Note.findOne({ _id: id, userId });
 
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
@@ -89,14 +83,14 @@ const generateShareableLink = async (req, res) => {
     const shareId = uuidv4();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    await prisma.sharedNote.create({
-      data: {
-        id: shareId,
-        noteId: id,
-        userId,
-        expiresAt
-      }
+    const sharedNote = new SharedNote({
+      _id: shareId,
+      noteId: id,
+      userId,
+      expiresAt
     });
+    
+    await sharedNote.save();
 
     const shareUrl = `${process.env.FRONTEND_URL}/shared/${shareId}`;
     
@@ -112,20 +106,20 @@ const getSharedNote = async (req, res) => {
   try {
     const { shareId } = req.params;
 
-    const sharedNote = await prisma.sharedNote.findUnique({
-      where: { id: shareId },
-      include: {
-        note: {
-          include: { folder: true, user: { select: { name: true } } }
-        }
-      }
-    });
+    const sharedNote = await SharedNote.findById(shareId)
+      .populate({
+        path: 'noteId',
+        populate: [
+          { path: 'folderId', select: 'name' },
+          { path: 'userId', select: 'name' }
+        ]
+      });
 
     if (!sharedNote || sharedNote.expiresAt < new Date()) {
       return res.status(404).json({ error: 'Shared note not found or expired' });
     }
 
-    res.json({ note: sharedNote.note });
+    res.json({ note: sharedNote.noteId });
 
   } catch (error) {
     console.error('Shared note fetch error:', error);

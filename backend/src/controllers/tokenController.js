@@ -1,5 +1,5 @@
 const { verifyToken, generateTokenPair } = require('../utils/jwt');
-const { prisma } = require('../db/database');
+const User = require('../models/User');
 
 const refreshToken = async (req, res) => {
   try {
@@ -9,15 +9,12 @@ const refreshToken = async (req, res) => {
     }
 
     const decoded = verifyToken(refreshToken);
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, name: true }
-    });
+    const user = await User.findById(decoded.userId).select('email name');
     if (!user) {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
-    const { accessToken, refreshToken: newRefreshToken } = generateTokenPair(user.id);
+    const { accessToken, refreshToken: newRefreshToken } = generateTokenPair(user._id);
 
     res.json({
       message: 'Tokens refreshed successfully',

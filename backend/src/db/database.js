@@ -1,25 +1,37 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-  errorFormat: 'pretty',
-});
+const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await prisma.$connect();
-    console.log('Database connected successfully');
+    // Set mongoose options
+    mongoose.set('strictQuery', false);
     
-    // Safe Shutdown
-    process.on('beforeExit', async () => {
-      await prisma.$disconnect();
-      console.log('Database disconnected');
+    const conn = await mongoose.connect(process.env.DATABASE_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
+    
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Handle connection events
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+    });
+    
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+    });
+    
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+      await mongoose.connection.close();
+      console.log('MongoDB connection closed through app termination');
+      process.exit(0);
+    });
+    
   } catch (error) {
     console.error('Database connection failed:', error.message);
-    await prisma.$disconnect();
     throw error;
   }
 };
 
-module.exports = { prisma, connectDB };
+module.exports = { connectDB };

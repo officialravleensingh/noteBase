@@ -16,6 +16,22 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
     });
   };
 
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'journal': return '📔';
+      case 'memory': return '💭';
+      default: return '📝';
+    }
+  };
+
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case 'journal': return 'Journal';
+      case 'memory': return 'Memory';
+      default: return 'Note';
+    }
+  };
+
   const getWordCount = (content) => {
     if (!content) return 0;
     return content.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -28,11 +44,11 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
   };
 
   const handleEdit = () => {
-    router.push(`/editor/${note.id}`);
+    router.push(`/editor/${note.id || note._id}`);
   };
 
   const handleDelete = () => {
-    onDelete(note.id);
+    onDelete(note.id || note._id);
     setShowDeleteConfirm(false);
   };
 
@@ -55,9 +71,12 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
         </div>
       )}
       <div className="flex justify-between items-start mb-3">
-        <h3 className="text-lg font-semibold text-gray-900 truncate">
-          {note.title || 'Untitled'}
-        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{getTypeIcon(note.type)}</span>
+          <h3 className="text-lg font-semibold text-gray-900 truncate">
+            {note.title || 'Untitled'}
+          </h3>
+        </div>
         <div className="flex space-x-2 ml-2">
           <button
             onClick={(e) => {
@@ -70,13 +89,18 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
         </div>
       </div>
 
-      {note.folder && (
-        <div className="mb-2">
-          <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-            {note.folder.name}
+      <div className="flex items-center gap-2 mb-2">
+        {note.type && note.type !== 'normal' && (
+          <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+            {getTypeLabel(note.type)}
           </span>
-        </div>
-      )}
+        )}
+        {(note.folder || note.folderId) && (
+          <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+            {note.folder?.name || note.folderId?.name || 'Folder'}
+          </span>
+        )}
+      </div>
 
       <p className="text-gray-600 text-sm mb-4 line-clamp-3">
         {getPreview(note.content)}

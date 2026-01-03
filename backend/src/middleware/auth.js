@@ -1,5 +1,5 @@
 const { verifyToken, generateTokenPair } = require('../utils/jwt');
-const { prisma } = require('../db/database');
+const User = require('../models/User');
 
 const authenticate = async (req, res, next) => {
   try {
@@ -34,10 +34,7 @@ const authenticate = async (req, res, next) => {
 
     let user;
     try {
-      user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-        select: { id: true, email: true, name: true }
-      });
+      user = await User.findById(decoded.userId).select('_id email name');
     } catch (dbError) {
       console.error('Database error in auth middleware:', dbError);
       return res.status(500).json({ error: 'Database error during authentication.' });
@@ -47,7 +44,7 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found. Token may be invalid.' });
     }
 
-    req.user = user;
+    req.user = { id: user._id, email: user.email, name: user.name };
     next();
   } catch (error) {
     console.error('Unexpected error in auth middleware:', error);
@@ -75,10 +72,7 @@ const handleTokenRefresh = async (req, res, next) => {
 
     let user;
     try {
-      user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-        select: { id: true, email: true, name: true }
-      });
+      user = await User.findById(decoded.userId).select('_id email name');
     } catch (dbError) {
       console.error('Database error during token refresh:', dbError);
       return res.status(500).json({ error: 'Database error during token refresh.' });
@@ -89,7 +83,7 @@ const handleTokenRefresh = async (req, res, next) => {
 
     let tokens;
     try {
-      tokens = generateTokenPair(user.id);
+      tokens = generateTokenPair(user._id);
     } catch (tokenGenError) {
       console.error('Token generation error:', tokenGenError);
       return res.status(500).json({ error: 'Failed to generate new tokens.' });
@@ -98,7 +92,7 @@ const handleTokenRefresh = async (req, res, next) => {
     res.set('x-access-token', tokens.accessToken);
     res.set('x-refresh-token', tokens.refreshToken);
     
-    req.user = user;
+    req.user = { id: user._id, email: user.email, name: user.name };
     next();
   } catch (error) {
     console.error('Unexpected error in token refresh:', error);

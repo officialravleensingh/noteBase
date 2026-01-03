@@ -1,7 +1,7 @@
 require('dotenv').config();
 const app = require('./src/app');
 const { connectDB } = require('./src/db/database');
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
 
 const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
@@ -37,9 +37,7 @@ const startServer = async () => {
     });
 
 
-    // SAFE EXIT
     // ^C Clicked in Terminal (SIGINT) OR Deployment Exit (SIGTERM)
-    // Graceful shutdown handling
     const safeShutdown = (signal) => {
       console.log(`\n${signal} received. Starting graceful shutdown...`);
       server.close(() => {
@@ -49,14 +47,6 @@ const startServer = async () => {
     
     process.on('SIGTERM', () => safeShutdown('SIGTERM'));
     process.on('SIGINT', () => safeShutdown('SIGINT'));
-    process.on('uncaughtException', (error) => {
-      console.error('Uncaught Exception:', error);
-      throw new Error(`Uncaught Exception: ${error.message}`);
-    });
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-      throw new Error(`Unhandled Rejection: ${reason}`);
-    });
   } catch (error) {
     console.error('Failed to start server:', error.message);
     throw new Error(`Server startup failed: ${error.message}`);

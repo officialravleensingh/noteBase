@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const Note = require('../models/Note');
+const Folder = require('../models/Folder');
 
 const getAllNotes = async (req, res) => {
   try {
@@ -14,7 +14,6 @@ const getAllNotes = async (req, res) => {
     } = req.query;
     const userId = req.user.id;
 
-    // Input validation
     const validSortFields = ['updatedAt', 'createdAt', 'title'];
     const validOrders = ['asc', 'desc'];
     
@@ -27,7 +26,7 @@ const getAllNotes = async (req, res) => {
     }
 
     const pageNum = Math.max(1, parseInt(page) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10)); // Max 100 items per page
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
 
     const whereClause = { userId };
     
@@ -39,34 +38,23 @@ const getAllNotes = async (req, res) => {
 
     if (search && search.trim()) {
       const searchTerm = search.trim();
-      whereClause.OR = [
-        { title: { contains: searchTerm, mode: 'insensitive' } },
-        { content: { contains: searchTerm, mode: 'insensitive' } }
+      whereClause.$or = [
+        { title: { $regex: searchTerm, $options: 'i' } },
+        { content: { $regex: searchTerm, $options: 'i' } }
       ];
     }
 
     const skip = (pageNum - 1) * limitNum;
+    const sortOrder = order === 'desc' ? -1 : 1;
 
     const [notes, total] = await Promise.all([
-      prisma.note.findMany({
-        where: whereClause,
-        select: {
-          id: true,
-          title: true,
-          content: true,
-          createdAt: true,
-          updatedAt: true,
-          folder: {
-            select: { id: true, name: true }
-          }
-        },
-        orderBy: {
-          [sortBy]: order
-        },
-        skip,
-        take: limitNum
-      }),
-      prisma.note.count({ where: whereClause })
+      Note.find(whereClause)
+        .populate('folderId', 'name')
+        .select('title content type createdAt updatedAt folderId')
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(limitNum),
+      Note.countDocuments(whereClause)
     ]);
 
     res.json({ 
@@ -85,17 +73,9 @@ const getAllNotes = async (req, res) => {
 
 const createNote = async (req, res) => {
   try {
-    const { title, content, folderId } = req.body;
+    const { title, content, folderId, type = 'normal' } = req.body;
     const userId = req.user.id;
 
-    console.log('Backend createNote - received data:', {
-      title,
-      content: content ? content.substring(0, 50) + '...' : content,
-      folderId,
-      userId
-    });
-
-    // Input validation
     if (title && title.length > 200) {
       return res.status(400).json({ success: false, message: 'Title must be less than 200 characters' });
     }
@@ -104,55 +84,112 @@ const createNote = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Content must be less than 50,000 characters' });
     }
 
-    // Verify folder ownership if folderId is provided
     if (folderId) {
-      const folder = await prisma.folder.findFirst({
-        where: { id: folderId, userId }
-      });
+      const folder = await Folder.findOne({ _id: folderId, userId });
       if (!folder) {
         return res.status(400).json({ success: false, message: 'Invalid folder' });
       }
     }
 
     let noteTitle = title?.trim();
-    if (!noteTitle) {
-      const existingNotes = await prisma.note.findMany({
-        where: { userId, title: { startsWith: 'Untitled' } },
-        select: { title: true }
+    
+    // Handle different note types
+    if (type === 'journal') {
+      const today = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
       
-      if (existingNotes.length === 0) {
-        noteTitle = 'Untitled';
-      } else {
-        const untitledNumbers = existingNotes
-          .map(note => {
-            if (note.title === 'Untitled') return 0;
-            const match = note.title.match(/^Untitled (\d+)$/);
-            return match ? parseInt(match[1]) : -1;
-          })
-          .filter(num => num >= 0)
-          .sort((a, b) => a - b);
-        
-        let nextNumber = 2;
-        for (const num of untitledNumbers) {
-          if (num === 0) continue;
-          if (num === nextNumber) {
-            nextNumber++;
-          } else {
-            break;
-          }
+      // Check if journal entry for today already exists
+      const existingJournal = await Note.findOne({
+        userId,
+        type: 'journal',
+        createdAt: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          $lt: new Date(new Date().setHours(23, 59, 59, 999))
         }
+      });
+      
+      if (existingJournal) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Journal entry for today already exists' 
+        });
+      }
+      
+      noteTitle = `Journal - ${today}`;
+    } else if (type === 'memory') {
+      if (!noteTitle) {
+        const existingMemories = await Note.find({
+          userId,
+          type: 'memory',
+          title: { $regex: /^Memory( \d+)?$/ }
+        }).select('title');
         
-        noteTitle = `Untitled ${nextNumber}`;
+        if (existingMemories.length === 0) {
+          noteTitle = 'Memory';
+        } else {
+          const numbers = existingMemories
+            .map(note => {
+              if (note.title === 'Memory') return 0;
+              const match = note.title.match(/^Memory (\d+)$/);
+              return match ? parseInt(match[1]) : -1;
+            })
+            .filter(num => num >= 0)
+            .sort((a, b) => a - b);
+          
+          let nextNumber = 2;
+          for (const num of numbers) {
+            if (num === 0) continue;
+            if (num === nextNumber) {
+              nextNumber++;
+            } else {
+              break;
+            }
+          }
+          
+          noteTitle = `Memory ${nextNumber}`;
+        }
       }
     } else {
-      const existingNote = await prisma.note.findFirst({
-        where: { 
-          userId, 
-          title: noteTitle
+      // Normal note logic
+      if (!noteTitle) {
+        const existingNotes = await Note.find({
+          userId,
+          title: { $regex: /^Untitled( \d+)?$/ }
+        }).select('title');
+        
+        if (existingNotes.length === 0) {
+          noteTitle = 'Untitled';
+        } else {
+          const numbers = existingNotes
+            .map(note => {
+              if (note.title === 'Untitled') return 0;
+              const match = note.title.match(/^Untitled (\d+)$/);
+              return match ? parseInt(match[1]) : -1;
+            })
+            .filter(num => num >= 0)
+            .sort((a, b) => a - b);
+          
+          let nextNumber = 2;
+          for (const num of numbers) {
+            if (num === 0) continue;
+            if (num === nextNumber) {
+              nextNumber++;
+            } else {
+              break;
+            }
+          }
+          
+          noteTitle = `Untitled ${nextNumber}`;
         }
-      });
-      
+      }
+    }
+
+    // Check for duplicate titles (except for journal entries)
+    if (type !== 'journal') {
+      const existingNote = await Note.findOne({ userId, title: noteTitle });
       if (existingNote) {
         return res.status(400).json({ 
           success: false, 
@@ -161,31 +198,16 @@ const createNote = async (req, res) => {
       }
     }
 
-    const finalFolderId = folderId || null;
-    console.log('Backend createNote - creating note with:', {
+    const note = new Note({
       title: noteTitle,
+      content: content?.trim() || '',
+      type,
       userId,
-      folderId: finalFolderId
+      folderId: folderId || null
     });
 
-    const note = await prisma.note.create({
-      data: {
-        title: noteTitle,
-        content: content?.trim() || '',
-        userId,
-        folderId: finalFolderId
-      },
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        folder: {
-          select: { id: true, name: true }
-        }
-      }
-    });
+    await note.save();
+    await note.populate('folderId', 'name');
 
     res.status(201).json({ success: true, note });
   } catch (error) {
@@ -200,7 +222,6 @@ const updateNote = async (req, res) => {
     const { title, content, folderId } = req.body;
     const userId = req.user.id;
 
-    // Input validation
     if (!id) {
       return res.status(400).json({ success: false, message: 'Note ID is required' });
     }
@@ -213,50 +234,32 @@ const updateNote = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Content must be less than 50,000 characters' });
     }
 
-    // Verify folder ownership if folderId is provided
     if (folderId) {
-      const folder = await prisma.folder.findFirst({
-        where: { id: folderId, userId }
-      });
+      const folder = await Folder.findOne({ _id: folderId, userId });
       if (!folder) {
         return res.status(400).json({ success: false, message: 'Invalid folder' });
       }
     }
 
-    // Check if note exists and belongs to user
-    const existingNote = await prisma.note.findFirst({
-      where: { id, userId }
-    });
-
+    const existingNote = await Note.findOne({ _id: id, userId });
     if (!existingNote) {
       return res.status(404).json({ success: false, message: 'Note not found' });
     }
 
-    const note = await prisma.note.update({
-      where: { id, userId },
-      data: {
-        title: title?.trim(),
-        content: content?.trim(),
-        folderId: folderId || null
-      },
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        folder: {
-          select: { id: true, name: true }
-        }
-      }
-    });
+    const updateData = {};
+    if (title !== undefined) updateData.title = title.trim();
+    if (content !== undefined) updateData.content = content.trim();
+    if (folderId !== undefined) updateData.folderId = folderId || null;
+
+    const note = await Note.findOneAndUpdate(
+      { _id: id, userId },
+      updateData,
+      { new: true }
+    ).populate('folderId', 'name');
 
     res.json({ success: true, note });
   } catch (error) {
     console.error('Update note error:', error);
-    if (error.code === 'P2025') {
-      return res.status(404).json({ success: false, message: 'Note not found' });
-    }
     res.status(500).json({ success: false, message: 'Failed to update note' });
   }
 };
@@ -270,25 +273,16 @@ const deleteNote = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Note ID is required' });
     }
 
-    // Check if note exists and belongs to user
-    const existingNote = await prisma.note.findFirst({
-      where: { id, userId }
-    });
-
+    const existingNote = await Note.findOne({ _id: id, userId });
     if (!existingNote) {
       return res.status(404).json({ success: false, message: 'Note not found' });
     }
 
-    await prisma.note.delete({
-      where: { id, userId }
-    });
+    await Note.findOneAndDelete({ _id: id, userId });
 
     res.json({ success: true, message: 'Note deleted successfully' });
   } catch (error) {
     console.error('Delete note error:', error);
-    if (error.code === 'P2025') {
-      return res.status(404).json({ success: false, message: 'Note not found' });
-    }
     res.status(500).json({ success: false, message: 'Failed to delete note' });
   }
 };
@@ -302,19 +296,9 @@ const getNoteById = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Note ID is required' });
     }
 
-    const note = await prisma.note.findFirst({
-      where: { id, userId },
-      select: {
-        id: true,
-        title: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        folder: {
-          select: { id: true, name: true }
-        }
-      }
-    });
+    const note = await Note.findOne({ _id: id, userId })
+      .populate('folderId', 'name')
+      .select('title content type createdAt updatedAt folderId');
 
     if (!note) {
       return res.status(404).json({ success: false, message: 'Note not found' });

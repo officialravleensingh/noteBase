@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { prisma } = require('../db/database');
+const User = require('../models/User');
 const { generateTokenPair } = require('../utils/jwt');
 
 const googleAuth = (req, res) => {
@@ -103,28 +103,25 @@ const googleCallback = async (req, res) => {
 
     let user;
     try {
-      user = await prisma.user.findUnique({
-        where: { email }
-      });
+      user = await User.findOne({ email });
       if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email,
-            password: '',
-            name: name || email.split('@')[0],
-            avatar: picture || null,
-            lastLogin: new Date()
-          }
+        user = new User({
+          email,
+          password: null,
+          name: name || email.split('@')[0],
+          avatar: picture || null,
+          lastLogin: new Date(),
+          isOAuthUser: true,
+          isVerified: true
         });
+        await user.save();
       } else {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            lastLogin: new Date(),
-            ...(picture && { avatar: picture }),
-            ...(name && !user.name && { name })
-          }
-        });
+        user.lastLogin = new Date();
+        if (picture) user.avatar = picture;
+        if (name && !user.name) user.name = name;
+        if (!user.isOAuthUser) user.isOAuthUser = true;
+        if (!user.isVerified) user.isVerified = true;
+        await user.save();
       }
     } catch (dbError) {
       console.error('OAuth database error:', dbError);
@@ -134,7 +131,7 @@ const googleCallback = async (req, res) => {
 
     let tokens;
     try {
-      tokens = generateTokenPair(user.id);
+      tokens = generateTokenPair(user._id);
     } catch (tokenError) {
       console.error('OAuth token generation error:', tokenError);
       const frontendUrl = process.env.FRONTEND_URL;
@@ -146,7 +143,7 @@ const googleCallback = async (req, res) => {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user: {
-        id: user.id,
+        id: user._id,
         email: user.email,
         name: user.name,
         avatar: picture

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 export default function CreateNoteModal({ folders, selectedFolder, onClose, onCreate }) {
   const [title, setTitle] = useState('');
+  const [type, setType] = useState('normal');
   const [folderId, setFolderId] = useState(selectedFolder || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -14,16 +15,11 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
 
     try {
       const finalFolderId = selectedFolder || (folderId || null);
-      console.log('CreateNoteModal - submitting with:', {
-        selectedFolder,
-        folderId,
-        finalFolderId,
-        title: title.trim()
-      });
       
       await onCreate({
         title: title.trim(),
         content: '',
+        type,
         folderId: finalFolderId
       });
     } catch (error) {
@@ -47,6 +43,47 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Note Type
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="noteType"
+                  value="normal"
+                  checked={type === 'normal'}
+                  onChange={(e) => setType(e.target.value)}
+                  className="mr-3 text-blue-600"
+                />
+                <span>📝 Normal Note</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="noteType"
+                  value="journal"
+                  checked={type === 'journal'}
+                  onChange={(e) => setType(e.target.value)}
+                  className="mr-3 text-blue-600"
+                />
+                <span>📔 Daily Journal</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="noteType"
+                  value="memory"
+                  checked={type === 'memory'}
+                  onChange={(e) => setType(e.target.value)}
+                  className="mr-3 text-blue-600"
+                />
+                <span>💭 Memory</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Title
             </label>
@@ -54,9 +91,10 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter note title (leave empty for auto-generated)"
+              placeholder={type === 'journal' ? 'Auto-generated with date' : type === 'memory' ? 'Enter memory title (optional)' : 'Enter note title (optional)'}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
+              disabled={type === 'journal'}
+              autoFocus={type !== 'journal'}
             />
           </div>
 
@@ -72,7 +110,7 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
               >
                 <option value="">No Folder</option>
                 {folders.map(folder => (
-                  <option key={folder.id} value={folder.id}>
+                  <option key={folder.id || folder._id} value={folder.id || folder._id}>
                     {folder.name}
                   </option>
                 ))}
@@ -83,7 +121,7 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
           {selectedFolder && (
             <div className="mb-6">
               <p className="text-sm text-gray-600">
-                Note will be created in: <span className="font-medium">{folders.find(f => f.id === selectedFolder)?.name}</span>
+                Note will be created in: <span className="font-medium">{folders.find(f => (f.id || f._id) === selectedFolder)?.name}</span>
               </p>
             </div>
           )}

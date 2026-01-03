@@ -24,17 +24,18 @@ Frontend → Backend (API) → Database → AI Integration (API)
 ### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database ORM**: Prisma Client
+- **Database ODM**: Mongoose
 - **Authentication**: JWT with refresh tokens + bcrypt
 - **OAuth**: Google OAuth 2.0
+- **Email Service**: Nodemailer (Gmail SMTP)
 - **PDF Generation**: Puppeteer
 - **Validation**: Express Validator
-- **Security**: CORS, Security Headers, Data Encryption
+- **Security**: CORS, Security Headers, Rate Limiting
 
 ### Database
 - **Database**: MongoDB Atlas
-- **Schema**: Prisma Schema with relations
-- **Models**: User, Note, Folder, SharedNote
+- **Schema**: Mongoose Schema with relations
+- **Models**: User, Note, Folder, SharedNote, OTP
 - **Indexing**: Optimized queries with database indexes
 
 ### DevOps & Deployment
@@ -50,7 +51,11 @@ Frontend → Backend (API) → Database → AI Integration (API)
 | Endpoint | Method | Description | Access |
 |----------|--------|-------------|--------|
 | `/api/auth/signup` | POST | Register new user | Public |
+| `/api/auth/verify-email` | POST | Verify email with OTP | Public |
 | `/api/auth/login` | POST | User login | Public |
+| `/api/auth/forgot-password` | POST | Request password reset | Public |
+| `/api/auth/reset-password` | POST | Reset password with OTP | Public |
+| `/api/auth/resend-otp` | POST | Resend OTP code | Public |
 | `/api/auth/refresh` | POST | Refresh access token | Public |
 | `/api/auth/logout` | POST | User logout | Public |
 | `/api/auth/profile` | GET | Get user profile | Authenticated |
@@ -91,22 +96,28 @@ Frontend → Backend (API) → Database → AI Integration (API)
 ### 🔐 Authentication & Security
 - JWT-based authentication with refresh tokens
 - Google OAuth 2.0 integration for seamless sign-in
-- Email/password registration and login
+- Email verification with OTP during signup
+- Password reset functionality with OTP verification
+- Remember me feature (localStorage vs sessionStorage)
 - Automatic token refresh for enhanced security
-- Data encryption for sensitive information
 - Secure password hashing with bcrypt
+- Rate limiting to prevent abuse
 - CORS and security headers protection
 
 ### 📝 Note Management
 - Create, Read, Update, Delete notes and folders
-- Rich text editor with advanced formatting
+- Three note types: Normal (📝), Journal (📔), Memory (💭)
+- Rich text editor with minimized toolbar
 - Real-time content editing with auto-save
 - Word count tracking
 - Unsaved changes detection and warnings
 - Note organization within folders
+- Duplicate title prevention
 
 ### 🎨 Rich Text Editing
+- **Minimized Toolbar**: Aa dropdown with formatting options
 - **Text Formatting**: Bold, italic, underline, strikethrough
+- **Text Sizes**: Title, Heading 1-3, Normal, Small
 - **Text Alignment**: Left, center, right alignment
 - **Lists**: Bullet points, numbered lists, arrow lists
 - **Advanced Features**: Code blocks, superscript, subscript
@@ -118,9 +129,9 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - Global search across notes and folders by title/content
 - Advanced sorting (date created/updated, title A-Z/Z-A)
 - Folder-based organization system
-- View filters (notes only, folders only, both)
 - Pagination for optimal performance
 - Bulk operations (select and delete multiple items)
+- Responsive design with mobile-friendly interface
 
 ### 📤 Export & Sharing
 - **PDF Export**: Generate and download notes as PDF
@@ -130,11 +141,12 @@ Frontend → Backend (API) → Database → AI Integration (API)
 
 ### 🎯 User Experience
 - Responsive design with TailwindCSS
-- Intuitive dashboard with sidebar navigation
+- User dropdown with Profile/Settings/Logout
 - Modal-based workflows for creating notes/folders
 - Real-time feedback and loading states
 - Clean, modern interface design
-- Split-view editor for seamless editing
+- Split-view editor (hidden on mobile)
+- Note type indicators with emojis
 
 ## Project Structure
 
@@ -216,8 +228,6 @@ noteBase/
 ```bash
 cd backend
 npm install
-npx prisma generate
-npx prisma db push
 npm run dev  # Runs on http://localhost:5000
 ```
 
@@ -233,22 +243,19 @@ npm run dev  # Runs on http://localhost:3000
 #### Backend Scripts
 - `npm run dev` - Start development server with nodemon
 - `npm start` - Start production server
-- `npm run build` - Generate Prisma client
-- `npm run prisma:generate` - Generate Prisma client
-- `npm run prisma:push` - Push schema to database
 
 #### Frontend Scripts
 - `npm run dev` - Start Next.js development server
 - `npm run build` - Build for production
 - `npm start` - Start production server
-- `npm run lint` - Run ESLint
 
 ### Environment Configuration
 
 The application requires environment variables for:
-- Database connection
+- Database connection (MongoDB Atlas)
 - JWT authentication secrets
 - Google OAuth credentials
+- Email service configuration (Gmail SMTP)
 - API endpoints
 - Server configuration
 
@@ -257,19 +264,24 @@ Refer to `.env.example` files in both frontend and backend directories for requi
 ### Phase 1: ✅ Authentication System (Completed)
 - JWT-based login/signup with refresh tokens
 - Google OAuth 2.0 integration
+- Email verification with OTP during signup
+- Password reset functionality with OTP
+- Remember me feature with localStorage/sessionStorage
 - Protected routes and middleware
 - User management and profile system
-- Database integration with Prisma
+- Database integration with Mongoose
 - Secure password hashing with bcrypt
-- Data encryption for sensitive information
+- Rate limiting and security headers
 
 ### Phase 2: ✅ Notes CRUD Operations (Completed)
 - Create, read, update, delete notes
-- Rich text editor with advanced formatting
+- Three note types: Normal, Journal, Memory
+- Rich text editor with minimized toolbar
 - Real-time content editing
 - Word count tracking
 - Auto-save functionality
 - Unsaved changes detection
+- Duplicate title prevention
 
 ### Phase 3: ✅ Advanced Features (Completed)
 - Search functionality across notes and folders
@@ -277,7 +289,7 @@ Refer to `.env.example` files in both frontend and backend directories for requi
 - Pagination for large datasets
 - Folder management system
 - Bulk operations (select and delete multiple items)
-- View filters (notes only, folders only, both)
+- Responsive design with mobile support
 
 ### Phase 4: ✅ Export & Sharing (Completed)
 - PDF export functionality
@@ -285,24 +297,20 @@ Refer to `.env.example` files in both frontend and backend directories for requi
 - Public access to shared notes
 - Export modal with options
 
-### Phase 5: 🚧 Rich Text Features (In Progress)
-- Bold, italic, underline formatting
-- Text alignment (left, center, right)
-- Lists (bullets, numbers, arrows)
-- Text color customization
-- Code blocks and inline code
-- Superscript and subscript
-- Image upload and insertion
-- Find and replace functionality
-- Strikethrough text
-- Keyboard shortcuts support
+### Phase 5: ✅ Enhanced UI/UX (Completed)
+- User dropdown with Profile/Settings/Logout
+- Minimized toolbar with Aa dropdown
+- Note type indicators with emojis
+- Responsive editor (hidden on mobile)
+- Centered toolbar layout
+- Modern interface design
 
 ### Phase 6: 📋 Upcoming Features
 - AI Integration (text summarization, grammar correction)
 - Theme customization (dark/light mode)
 - Collaborative editing
 - Real-time synchronization
-- Mobile responsiveness improvements
+- Advanced note security features
 
 ## Deployment
 - **Frontend**: Vercel with environment variables configured

@@ -1,11 +1,11 @@
 const errorHandler = (err, req, res, next) => {
   console.error('Error stack:', err.stack);
 
-  // Prisma errors
-  if (err.code === 'P2002') {
+  // Mongoose errors
+  if (err.code === 11000) {
     return res.status(400).json({error: 'Duplicate entry. This record already exists.'});
   }
-  if (err.code === 'P2025') {
+  if (err.name === 'CastError') {
     return res.status(404).json({error: 'Record not found.'});
   }
 

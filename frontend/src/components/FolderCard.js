@@ -15,7 +15,7 @@ export default function FolderCard({ folder, onDelete, onOpen, selectionMode, is
   };
 
   const handleDelete = () => {
-    onDelete(folder.id);
+    onDelete(folder.id || folder._id);
     setShowDeleteConfirm(false);
   };
 
@@ -24,7 +24,7 @@ export default function FolderCard({ folder, onDelete, onOpen, selectionMode, is
       className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer ${
         isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''
       }`}
-      onClick={selectionMode ? onSelect : () => onOpen(folder.id)}
+      onClick={selectionMode ? onSelect : () => onOpen(folder.id || folder._id)}
     >
       {selectionMode && (
         <div className="flex items-center mb-3">
@@ -58,7 +58,7 @@ export default function FolderCard({ folder, onDelete, onOpen, selectionMode, is
       </div>
 
       <p className="text-gray-600 text-sm mb-4">
-        {folder._count?.notes || 0} notes
+        {folder.noteCount || folder._count?.notes || 0} notes
       </p>
 
       <div className="flex justify-between items-center text-xs text-gray-500">

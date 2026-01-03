@@ -11,8 +11,13 @@ export const useAuth = () => {
 
   const checkAuth = () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const userData = localStorage.getItem('user');
+      let token = localStorage.getItem('accessToken');
+      let userData = localStorage.getItem('user');
+      
+      if (!token) {
+        token = sessionStorage.getItem('accessToken');
+        userData = sessionStorage.getItem('user');
+      }
       
       if (token && userData) {
         setUser(JSON.parse(userData));
@@ -24,10 +29,19 @@ export const useAuth = () => {
     }
   };
 
-  const login = (userData, accessToken, refreshToken) => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+  const login = (userData, accessToken, refreshToken, rememberMe = true) => {
+    const storage = rememberMe ? localStorage : sessionStorage;
+    
+    storage.setItem('accessToken', accessToken);
+    storage.setItem('refreshToken', refreshToken);
+    storage.setItem('user', JSON.stringify(userData));
+    
+    // Clear the other storage to avoid conflicts
+    const otherStorage = rememberMe ? sessionStorage : localStorage;
+    otherStorage.removeItem('accessToken');
+    otherStorage.removeItem('refreshToken');
+    otherStorage.removeItem('user');
+    
     setUser(userData);
   };
 
@@ -35,6 +49,9 @@ export const useAuth = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
     setUser(null);
   };
 

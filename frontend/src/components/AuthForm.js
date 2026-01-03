@@ -6,12 +6,14 @@ export default function AuthForm({ mode, onSubmit, loading }) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: mode === 'signup' ? '' : undefined
+    name: mode === 'signup' ? '' : undefined,
+    rememberMe: true
   });
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setFormData({ ...formData, [e.target.name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -70,6 +72,26 @@ export default function AuthForm({ mode, onSubmit, loading }) {
           minLength="6"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
+        {mode === 'login' && (
+          <div className="flex justify-between items-center mt-2">
+            <div className="flex items-center">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={formData.rememberMe}
+                onChange={handleChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
+            </div>
+            <a href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
+              Forgot your password?
+            </a>
+          </div>
+        )}
       </div>
       
       {error && (
@@ -89,7 +111,7 @@ export default function AuthForm({ mode, onSubmit, loading }) {
           <div className="w-full border-t border-gray-300" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500"></span>
+          <span className="px-2 bg-white text-gray-500">or</span>
         </div>
       </div>
       

@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const apiRequest = async (endpoint, options = {}) => {
   try {
@@ -11,8 +11,9 @@ const apiRequest = async (endpoint, options = {}) => {
     
     const url = `${API_URL}${endpoint}`;
     
-    const accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
+    // Check both localStorage and sessionStorage for tokens
+    let accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    let refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
     
     const config = {
       headers: {
@@ -23,10 +24,17 @@ const apiRequest = async (endpoint, options = {}) => {
       },
       ...options
     };
+    
+    // Add timeout for requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    config.signal = controller.signal;
+    
     if (options.body && typeof options.body === 'object') {
       try {
         config.body = JSON.stringify(options.body);
       } catch (jsonError) {
+        clearTimeout(timeoutId);
         throw new Error('Failed to serialize request body');
       }
     }
@@ -34,7 +42,12 @@ const apiRequest = async (endpoint, options = {}) => {
     let response;
     try {
       response = await fetch(url, config);
+      clearTimeout(timeoutId);
     } catch (networkError) {
+      clearTimeout(timeoutId);
+      if (networkError.name === 'AbortError') {
+        throw new Error('Request timeout. Please try again.');
+      }
       console.error('Network error:', networkError.message);
       throw new Error('Network error. Please check your connection.');
     }
@@ -43,10 +56,18 @@ const apiRequest = async (endpoint, options = {}) => {
     const newRefreshToken = response.headers.get('x-refresh-token');
     
     if (newAccessToken) {
-      localStorage.setItem('accessToken', newAccessToken);
+      if (localStorage.getItem('accessToken')) {
+        localStorage.setItem('accessToken', newAccessToken);
+      } else {
+        sessionStorage.setItem('accessToken', newAccessToken);
+      }
     }
     if (newRefreshToken) {
-      localStorage.setItem('refreshToken', newRefreshToken);
+      if (localStorage.getItem('refreshToken')) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+      } else {
+        sessionStorage.setItem('refreshToken', newRefreshToken);
+      }
     }
     
     let data;
@@ -156,14 +177,25 @@ export const foldersAPI = {
 
 export const exportAPI = {
   generatePDF: async (noteId) => {
-    const accessToken = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_URL}/export/notes/${noteId}/pdf`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
+    try {
+      const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      if (!accessToken) {
+        throw new Error('Authentication required');
       }
-    });
-    if (!response.ok) throw new Error('Failed to generate PDF');
-    return response.blob();
+      const response = await fetch(`${API_URL}/export/notes/${noteId}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to generate PDF');
+      }
+      return response.blob();
+    } catch (error) {
+      console.error('PDF generation error:', error.message);
+      throw error;
+    }
   },
   generateShareLink: (noteId) => apiRequest(`/export/notes/${noteId}/share`, {
     method: 'POST'
