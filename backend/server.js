@@ -1,28 +1,27 @@
 require('dotenv').config();
 const app = require('./src/app');
 const { connectDB } = require('./src/db/database');
-const PORT = process.env.PORT || 5000;
+const { validateEnvironment } = require('./src/utils/validation');
+const { cleanupExpiredAccounts } = require('./src/utils/cleanup');
 
-const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL'];
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+try {
+  validateEnvironment();
+} catch (error) {
+  console.error('Environment validation failed:', error.message);
+  process.exit(1);
 }
 
 const startServer = async () => {
   try {
-    console.log('Starting NoteBase server...');
-
-    // Retrying for three times after 5 seconcds of interval
+    const PORT = process.env.PORT || 5000;
+    
     let retries = 3;
     while (retries > 0) {
       try {
         await connectDB();
-        console.log('Database connected successfully');
         break;
       } catch (dbError) {
         retries--;
-        console.error(`Database connection failed. Retries left: ${retries}`);
         if (retries === 0) {
           throw dbError;
         }
@@ -33,15 +32,35 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
-      console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
     });
 
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+      } else {
+        console.error('Server error:', error);
+        process.exit(1);
+      }
+    });
 
-    // ^C Clicked in Terminal (SIGINT) OR Deployment Exit (SIGTERM)
-    const safeShutdown = (signal) => {
-      console.log(`\n${signal} received. Starting graceful shutdown...`);
-      server.close(() => {
-        console.log('HTTP server closed.');
+    setInterval(async () => {
+      try {
+        const result = await cleanupExpiredAccounts();
+      } catch (error) {
+        // Silent cleanup fails
+      }
+    }, 6 * 60 * 60 * 1000);
+
+    const safeShutdown = async (signal) => {
+      server.close(async () => {
+        try {
+          const mongoose = require('mongoose');
+          await mongoose.connection.close();
+        } catch (dbError) {
+          // Silent DB close
+        }
+        process.exit(0);
       });
     };
     
@@ -49,7 +68,7 @@ const startServer = async () => {
     process.on('SIGINT', () => safeShutdown('SIGINT'));
   } catch (error) {
     console.error('Failed to start server:', error.message);
-    throw new Error(`Server startup failed: ${error.message}`);
+    process.exit(1);
   }
 };
 

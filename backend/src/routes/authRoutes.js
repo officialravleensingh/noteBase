@@ -5,7 +5,13 @@ const {
   login, 
   forgotPassword, 
   resetPassword, 
-  resendOTP 
+  resendOTP,
+  sendProfileOTP,
+  verifyProfileOTP,
+  updateProfile,
+  sendPasswordChangeOTP,
+  verifyPasswordChangeOTP,
+  changePassword
 } = require('../controllers/authController');
 const { refreshToken } = require('../controllers/tokenController');
 const { logout } = require('../controllers/logoutController');
@@ -24,5 +30,15 @@ router.post('/resend-otp', resendOTP);
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 router.get('/profile', authenticate, getProfile);
+
+// Profile management routes
+router.post('/send-profile-otp', authenticate, sendProfileOTP);
+router.post('/verify-profile-otp', authenticate, verifyProfileOTP);
+router.put('/update-profile', authenticate, updateProfile);
+
+// Password change routes
+router.post('/send-password-change-otp', authenticate, sendPasswordChangeOTP);
+router.post('/verify-password-change-otp', authenticate, verifyPasswordChangeOTP);
+router.put('/change-password', authenticate, changePassword);
 
 module.exports = router;

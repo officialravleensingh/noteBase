@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { notesAPI, foldersAPI } from '../lib/api';
+import ShareModal from './ShareModal';
 import ExportModal from './ExportModal';
 
 export default function NoteEditor({ noteId, onClose }) {
@@ -24,6 +25,7 @@ export default function NoteEditor({ noteId, onClose }) {
   const [currentAlignment, setCurrentAlignment] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
@@ -31,9 +33,12 @@ export default function NoteEditor({ noteId, onClose }) {
   const [replaceText, setReplaceText] = useState('');
   const [originalContent, setOriginalContent] = useState('');
   const [originalTitle, setOriginalTitle] = useState('');
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved');
+  const [lastSaved, setLastSaved] = useState(null);
   const contentRef = useRef(null);
   const fileInputRef = useRef(null);
   const dropdownRef = useRef(null);
+  const autoSaveTimeoutRef = useRef(null);
 
   useEffect(() => {
     fetchData();
@@ -51,8 +56,34 @@ export default function NoteEditor({ noteId, onClose }) {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    if (hasUnsavedChanges && !saving) {
+      setAutoSaveStatus('unsaved');
+      
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Auto-save after 30 seconds
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        handleAutoSave();
+      }, 30000);
+    }
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [hasUnsavedChanges, saving]);
 
   const fetchData = async () => {
     try {
@@ -69,11 +100,9 @@ export default function NoteEditor({ noteId, onClose }) {
       setFolderId(noteData.folderId || '');
       setFolders(foldersResponse.folders || []);
       
-      // Store original values for change detection
       setOriginalTitle(noteData.title || '');
       setOriginalContent(noteData.content || '');
       
-      // Set initial content in editor
       if (contentRef.current) {
         contentRef.current.innerHTML = noteData.content || '';
       }
@@ -88,9 +117,7 @@ export default function NoteEditor({ noteId, onClose }) {
   const updateWordCount = () => {
     if (contentRef.current) {
       const htmlContent = contentRef.current.innerHTML;
-      // Remove HTML tags and get plain text
       const plainText = htmlContent.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
-      // Split by whitespace and filter out empty strings
       const words = plainText.trim().split(/\s+/).filter(word => word.length > 0);
       setWordCount(words.length);
     } else {
@@ -101,20 +128,51 @@ export default function NoteEditor({ noteId, onClose }) {
   const handleSave = async () => {
     try {
       setSaving(true);
+      setAutoSaveStatus('saving');
+      
       await notesAPI.update(noteId, {
         title: title.trim() || 'Untitled',
         content,
         folderId: folderId || null
       });
       
-      // Update original values after successful save
       setOriginalTitle(title.trim() || 'Untitled');
       setOriginalContent(content);
       setHasUnsavedChanges(false);
+      setAutoSaveStatus('saved');
+      setLastSaved(new Date());
+      
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
     } catch (error) {
       console.error('Failed to save note:', error);
+      setAutoSaveStatus('unsaved');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAutoSave = async () => {
+    if (!hasUnsavedChanges || saving) return;
+    
+    try {
+      setAutoSaveStatus('saving');
+      
+      await notesAPI.update(noteId, {
+        title: title.trim() || 'Untitled',
+        content,
+        folderId: folderId || null
+      });
+      
+      setOriginalTitle(title.trim() || 'Untitled');
+      setOriginalContent(content);
+      setHasUnsavedChanges(false);
+      setAutoSaveStatus('saved');
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+      setAutoSaveStatus('unsaved');
     }
   };
 
@@ -139,8 +197,6 @@ export default function NoteEditor({ noteId, onClose }) {
     document.execCommand(command, false, value);
     setContent(contentRef.current.innerHTML);
   };
-
-
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -203,14 +259,12 @@ export default function NoteEditor({ noteId, onClose }) {
     const newContent = e.target.innerHTML;
     setContent(newContent);
     
-    // Check for unsaved changes
     if (newContent !== originalContent || title !== originalTitle) {
       setHasUnsavedChanges(true);
     } else {
       setHasUnsavedChanges(false);
     }
     
-    // Update toolbar states based on current selection
     setTimeout(() => {
       const selection = window.getSelection();
       if (selection.rangeCount > 0) {
@@ -221,15 +275,11 @@ export default function NoteEditor({ noteId, onClose }) {
     }, 10);
   };
 
-
-
   const handlePaste = (e) => {
     const clipboardData = e.clipboardData || window.clipboardData;
     const pastedData = clipboardData.getData('text/html') || clipboardData.getData('text/plain');
     
-    // Allow default paste behavior for tables and formatted content
     if (pastedData.includes('<table') || pastedData.includes('<tr') || pastedData.includes('<td')) {
-      // Let browser handle table pasting
       setTimeout(() => {
         handleContentChange({ target: contentRef.current });
       }, 10);
@@ -271,9 +321,10 @@ export default function NoteEditor({ noteId, onClose }) {
         const listItem = range.startContainer.closest ? range.startContainer.closest('li') : 
                         range.startContainer.parentElement?.closest('li');
         
+        // Exit list on empty backspace
         if (listItem && range.startOffset === 0 && listItem.textContent.trim() === '') {
           e.preventDefault();
-          // Exit all lists completely
+          // Remove all list formatting
           while (document.queryCommandState('insertUnorderedList') || document.queryCommandState('insertOrderedList')) {
             document.execCommand('insertUnorderedList', false, null);
           }
@@ -329,11 +380,9 @@ export default function NoteEditor({ noteId, onClose }) {
 
   return (
     <div className={`${onClose ? 'h-full flex flex-col' : 'min-h-screen'} bg-gray-50`}>
-      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="px-4 py-4">
           <div className="flex items-center">
-            {/* Left side - Close button */}
             <div className="w-1/3">
               {onClose && (
                 <button
@@ -353,10 +402,8 @@ export default function NoteEditor({ noteId, onClose }) {
               )}
             </div>
             
-            {/* Center - Empty space */}
             <div className="w-1/3"></div>
             
-            {/* Right side - Export and Save buttons */}
             <div className="w-1/3 flex justify-end items-center space-x-4">
               <select
                 value={folderId}
@@ -370,6 +417,7 @@ export default function NoteEditor({ noteId, onClose }) {
                   </option>
                 ))}
               </select>
+              
               <button
                 onClick={() => setShowExportModal(true)}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
@@ -377,23 +425,49 @@ export default function NoteEditor({ noteId, onClose }) {
                 Export
               </button>
               <button
+                onClick={() => setShowShareModal(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm"
+              >
+                Share
+              </button>
+              <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save'
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Editor */}
+      {autoSaveStatus !== 'saved' && (
+        <div className="fixed bottom-4 right-4 bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-lg flex items-center gap-2 text-sm">
+          {autoSaveStatus === 'saving' ? (
+            <>
+              <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-blue-600">Auto-saving...</span>
+            </>
+          ) : (
+            <>
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span className="text-gray-600">Unsaved changes</span>
+            </>
+          )}
+        </div>
+      )}
+
       <div className={`${onClose ? 'flex-1 flex flex-col' : 'max-w-4xl mx-auto'} px-4 py-6`}>
         <div className="bg-white rounded-lg shadow-sm border flex flex-col" style={{ height: onClose ? 'calc(85vh - 120px)' : 'calc(85vh - 140px)' }}>
-          {/* Toolbar */}
           <div className="px-6 py-4 border-b bg-gray-50 flex justify-center items-center gap-4 flex-shrink-0">
-            {/* Aa Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowFormatDropdown(!showFormatDropdown)}
@@ -407,7 +481,6 @@ export default function NoteEditor({ noteId, onClose }) {
               
               {showFormatDropdown && (
                 <div className="absolute top-full left-0 mt-1 bg-white border rounded-md shadow-lg z-10 p-3 min-w-64">
-                  {/* First Row: Bold, Italic, Underline, Strikethrough | Color Picker */}
                   <div className="flex items-center justify-between mb-3 pb-2 border-b">
                     <div className="flex items-center gap-2">
                       <button
@@ -487,7 +560,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     />
                   </div>
                   
-                  {/* Title */}
                   <div className="mb-2">
                     <button
                       onClick={() => {
@@ -500,7 +572,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Heading Properties */}
                   <div className="mb-2">
                     <button
                       onClick={() => {
@@ -531,7 +602,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Normal */}
                   <div className="mb-2">
                     <button
                       onClick={() => {
@@ -544,7 +614,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Small */}
                   <div className="mb-2">
                     <button
                       onClick={() => {
@@ -557,7 +626,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Bulleted List */}
                   <div className="mb-1">
                     <button
                       onClick={() => {
@@ -576,7 +644,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Numbered List */}
                   <div className="mb-1">
                     <button
                       onClick={() => {
@@ -595,7 +662,6 @@ export default function NoteEditor({ noteId, onClose }) {
                     </button>
                   </div>
                   
-                  {/* Arrowed/Dashed List */}
                   <div>
                     <button
                       onClick={() => {
@@ -628,7 +694,6 @@ export default function NoteEditor({ noteId, onClose }) {
 
             <div className="border-l h-8"></div>
             
-            {/* Alignment */}
             <button
               onClick={() => {
                 formatText('justifyLeft');
@@ -668,7 +733,6 @@ export default function NoteEditor({ noteId, onClose }) {
             
             <div className="border-l h-8"></div>
             
-            {/* Code */}
             <button
               onClick={insertCode}
               className={`px-3 py-2 border rounded text-sm font-mono ${
@@ -679,7 +743,6 @@ export default function NoteEditor({ noteId, onClose }) {
               &lt;/&gt;
             </button>
             
-            {/* Superscript & Subscript */}
             <button
               onClick={insertSuperscript}
               className={`px-3 py-2 border rounded text-sm ${
@@ -702,7 +765,6 @@ export default function NoteEditor({ noteId, onClose }) {
             
             <div className="border-l h-8"></div>
             
-            {/* Image */}
             <input
               ref={fileInputRef}
               type="file"
@@ -718,7 +780,6 @@ export default function NoteEditor({ noteId, onClose }) {
               Image
             </button>
             
-            {/* Find */}
             <button
               onClick={() => setShowFindReplace(true)}
               className="px-3 py-2 border rounded text-sm hover:bg-gray-200 border-gray-300"
@@ -728,7 +789,6 @@ export default function NoteEditor({ noteId, onClose }) {
             </button>
           </div>
 
-          {/* Title */}
           <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center">
               <span className="text-xl font-bold text-gray-700 mr-2">Title:</span>
@@ -750,7 +810,6 @@ export default function NoteEditor({ noteId, onClose }) {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 p-6 flex flex-col overflow-hidden">
             <div
               ref={contentRef}
@@ -759,7 +818,6 @@ export default function NoteEditor({ noteId, onClose }) {
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               onMouseUp={() => {
-                // Update toolbar states when clicking/selecting text
                 setTimeout(() => {
                   setBoldActive(document.queryCommandState('bold'));
                   setItalicActive(document.queryCommandState('italic'));
@@ -778,25 +836,27 @@ export default function NoteEditor({ noteId, onClose }) {
             />
           </div>
 
-          {/* Word count */}
           <div className="px-6 py-3 border-t bg-gray-50 text-right flex-shrink-0">
             <span className="text-sm text-gray-500">{wordCount} words</span>
           </div>
         </div>
         
-        {/* Reserved space for AI implementation */}
         <div style={{ height: '15vh' }}></div>
       </div>
 
-      {/* Export Modal */}
-      <ExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
+      <ShareModal
         noteId={noteId}
-        noteTitle={title || 'Untitled'}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
       />
 
-      {/* Find & Replace Modal */}
+      <ExportModal
+        noteId={noteId}
+        noteTitle={title}
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+      />
+
       {showFindReplace && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -854,7 +914,6 @@ export default function NoteEditor({ noteId, onClose }) {
         </div>
       )}
 
-      {/* Save Dialog */}
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md mx-4">

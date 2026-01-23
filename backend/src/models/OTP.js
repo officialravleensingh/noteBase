@@ -13,8 +13,26 @@ const otpSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['signup', 'password-reset'],
+    enum: [
+      'signup', 
+      'password-reset', 
+      'profile-update', 
+      'password-change', 
+      'pin-setup', 
+      'section-pin-reset', 
+      'note-unlock', 
+      'memory-delete', 
+      'journal-delete', 
+      'permanent-delete', 
+      'empty-recycle-bin', 
+      'reminder-delete',
+      'feature-toggle'
+    ],
     required: true
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
   },
   expiresAt: {
     type: Date,

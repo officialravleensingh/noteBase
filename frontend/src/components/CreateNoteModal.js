@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 
-export default function CreateNoteModal({ folders, selectedFolder, onClose, onCreate }) {
+export default function CreateNoteModal({ folders, selectedFolder, onClose, onCreate, currentSection = 'notes' }) {
   const [title, setTitle] = useState('');
-  const [type, setType] = useState('normal');
+  const [type, setType] = useState(currentSection === 'notes' ? 'normal' : currentSection === 'memories' ? 'memory' : 'journal');
   const [folderId, setFolderId] = useState(selectedFolder || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +33,9 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-xl font-semibold mb-4">Create New Note</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Create New {currentSection === 'memories' ? 'Memory' : currentSection === 'journal' ? 'Journal Entry' : 'Note'}
+        </h2>
         
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -42,46 +44,26 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
         )}
         
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Note Type
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="noteType"
-                  value="normal"
-                  checked={type === 'normal'}
-                  onChange={(e) => setType(e.target.value)}
-                  className="mr-3 text-blue-600"
-                />
-                <span>📝 Normal Note</span>
+          {currentSection === 'notes' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Note Type
               </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="noteType"
-                  value="journal"
-                  checked={type === 'journal'}
-                  onChange={(e) => setType(e.target.value)}
-                  className="mr-3 text-blue-600"
-                />
-                <span>📔 Daily Journal</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="noteType"
-                  value="memory"
-                  checked={type === 'memory'}
-                  onChange={(e) => setType(e.target.value)}
-                  className="mr-3 text-blue-600"
-                />
-                <span>💭 Memory</span>
-              </label>
+              <div className="space-y-2">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="noteType"
+                    value="normal"
+                    checked={type === 'normal'}
+                    onChange={(e) => setType(e.target.value)}
+                    className="mr-3 text-blue-600"
+                  />
+                  <span>Normal Note</span>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -91,10 +73,14 @@ export default function CreateNoteModal({ folders, selectedFolder, onClose, onCr
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={type === 'journal' ? 'Auto-generated with date' : type === 'memory' ? 'Enter memory title (optional)' : 'Enter note title (optional)'}
+              placeholder={
+                currentSection === 'journal' ? 'Auto-generated with date' : 
+                currentSection === 'memories' ? 'Enter memory title (optional)' : 
+                'Enter note title (optional)'
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={type === 'journal'}
-              autoFocus={type !== 'journal'}
+              disabled={currentSection === 'journal'}
+              autoFocus={currentSection !== 'journal'}
             />
           </div>
 

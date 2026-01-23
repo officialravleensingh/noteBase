@@ -5,11 +5,8 @@ const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.header('Authorization');
     
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Access denied. No authorization header provided.' });
-    }
-    if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Invalid authorization format. Use Bearer token.' });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Access denied. Invalid authorization format.' });
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -25,30 +22,22 @@ const authenticate = async (req, res, next) => {
       if (tokenError.name === 'TokenExpiredError') {
         return handleTokenRefresh(req, res, next);
       }
-      console.error('Token verification error:', tokenError.message);
-      return res.status(401).json({ error: 'Invalid token format.' });
+      return res.status(401).json({ error: 'Invalid token.' });
     }
+    
     if (!decoded || !decoded.userId) {
       return res.status(401).json({ error: 'Invalid token payload.' });
     }
 
-    let user;
-    try {
-      user = await User.findById(decoded.userId).select('_id email name');
-    } catch (dbError) {
-      console.error('Database error in auth middleware:', dbError);
-      return res.status(500).json({ error: 'Database error during authentication.' });
-    }
-
+    const user = await User.findById(decoded.userId).select('_id email name');
     if (!user) {
-      return res.status(401).json({ error: 'User not found. Token may be invalid.' });
+      return res.status(401).json({ error: 'User not found.' });
     }
 
     req.user = { id: user._id, email: user.email, name: user.name };
     next();
   } catch (error) {
-    console.error('Unexpected error in auth middleware:', error);
-    res.status(500).json({ error: 'Internal authentication error.' });
+    res.status(500).json({ error: 'Authentication error.' });
   }
 };
 
@@ -61,33 +50,21 @@ const handleTokenRefresh = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = verifyToken(refreshToken);
+      decoded = verifyToken(refreshToken, true);
     } catch (refreshError) {
-      console.error('Refresh token verification error:', refreshError.message);
       return res.status(401).json({ error: 'Invalid or expired refresh token.' });
     }
+    
     if (!decoded || !decoded.userId) {
       return res.status(401).json({ error: 'Invalid refresh token payload.' });
     }
 
-    let user;
-    try {
-      user = await User.findById(decoded.userId).select('_id email name');
-    } catch (dbError) {
-      console.error('Database error during token refresh:', dbError);
-      return res.status(500).json({ error: 'Database error during token refresh.' });
-    }
+    const user = await User.findById(decoded.userId).select('_id email name');
     if (!user) {
-      return res.status(401).json({ error: 'User not found. Refresh token may be invalid.' });
+      return res.status(401).json({ error: 'User not found.' });
     }
 
-    let tokens;
-    try {
-      tokens = generateTokenPair(user._id);
-    } catch (tokenGenError) {
-      console.error('Token generation error:', tokenGenError);
-      return res.status(500).json({ error: 'Failed to generate new tokens.' });
-    }
+    const tokens = generateTokenPair(user._id);
     
     res.set('x-access-token', tokens.accessToken);
     res.set('x-refresh-token', tokens.refreshToken);
@@ -95,8 +72,7 @@ const handleTokenRefresh = async (req, res, next) => {
     req.user = { id: user._id, email: user.email, name: user.name };
     next();
   } catch (error) {
-    console.error('Unexpected error in token refresh:', error);
-    res.status(500).json({ error: 'Internal error during token refresh.' });
+    res.status(500).json({ error: 'Token refresh error.' });
   }
 };
 

@@ -78,9 +78,9 @@ export default function FolderCard({ folder, onDelete, onOpen, selectionMode, is
             className="bg-white rounded-lg p-6 max-w-sm mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4">Delete Folder</h3>
+            <h3 className="text-lg font-semibold mb-4">Move to Recycle Bin?</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "{folder.name}"? All notes inside this folder will also be permanently deleted.
+              This will move "{folder.name}" and all its contents to the recycle bin. You can restore them later or delete permanently.
             </p>
             <div className="flex justify-end space-x-3">
               <button
@@ -99,7 +99,7 @@ export default function FolderCard({ folder, onDelete, onOpen, selectionMode, is
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
-                Delete
+                Move to Bin
               </button>
             </div>
           </div>

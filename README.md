@@ -1,23 +1,32 @@
-# NoteBase - A Smart Personalised Notes Management Application
+# NoteBase - Smart Personalised Notes Management Application
 
-A complete full-stack note management system designed for a modern, personalized note-taking experience with AI integration, collaboration features, and intelligent assistance.
+A complete full-stack note management system with advanced features including memories, journal entries, collaboration, and intelligent assistance.
 
-## Problem Statement
 
-Managing and organizing notes across devices often becomes cluttered, and most apps lack personalization, collaboration, and intelligent assistance. **NoteBase** aims to solve this by providing a secure, customizable, and AI-powered note management system where users can create, organize, and share notes, collaborate in shared spaces, and use AI tools for summarization and grammar correction.
 
-## System Architecture
+### ✅ **Completed Features:**
+- **Authentication System** - JWT + Google OAuth + Email verification
+- **Notes Management** - CRUD with rich text editor and auto-save
+- **Memories & Journal** - Dedicated sections with PIN protection
+- **Advanced Settings** - User preferences with security controls
+- **Collaboration System** - Real-time sharing with custom permissions
+- **Export Features** - PDF export functionality
+- **Advanced Organization** - Folders, search, sorting, recycle bin
+- **Security Features** - Rate limiting, data protection, section locks
+- **Responsive Design** - Mobile-friendly interface
 
-```
-Frontend → Backend (API) → Database → AI Integration (API)
-```
+### 🚧 **Remaining Features :**
+- **Dark Mode** - Theme switching functionality
+- **AI Integration** - Text summarization and grammar correction
+- **Landing Page** - Marketing/welcome page
+- **UI Enhancements** - Final polish and animations
 
-## Tech Stack
+## 🛠 Tech Stack
 
 ### Frontend
 - **Framework**: Next.js 14 with App Router
 - **Styling**: TailwindCSS with PostCSS
-- **State Management**: React Hooks (useState, useEffect)
+- **State Management**: React Hooks
 - **Rich Text Editor**: ContentEditable with custom toolbar
 - **HTTP Client**: Fetch API with custom wrapper
 
@@ -28,14 +37,14 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - **Authentication**: JWT with refresh tokens + bcrypt
 - **OAuth**: Google OAuth 2.0
 - **Email Service**: Nodemailer (Gmail SMTP)
-- **PDF Generation**: Puppeteer
 - **Validation**: Express Validator
+- **PDF Generation**: Puppeteer
 - **Security**: CORS, Security Headers, Rate Limiting
 
 ### Database
 - **Database**: MongoDB Atlas
 - **Schema**: Mongoose Schema with relations
-- **Models**: User, Note, Folder, SharedNote, OTP
+- **Models**: User, Note, Folder, Memory, JournalEntry, SharedNote, OTP, RecycleBin, UserSettings
 - **Indexing**: Optimized queries with database indexes
 
 ### DevOps & Deployment
@@ -45,7 +54,7 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - **Environment**: Development and Production configs
 - **Version Control**: Git with .gitignore for sensitive files
 
-## API Endpoints
+## 📡 API Endpoints
 
 ### Authentication Routes
 | Endpoint | Method | Description | Access |
@@ -55,12 +64,9 @@ Frontend → Backend (API) → Database → AI Integration (API)
 | `/api/auth/login` | POST | User login | Public |
 | `/api/auth/forgot-password` | POST | Request password reset | Public |
 | `/api/auth/reset-password` | POST | Reset password with OTP | Public |
-| `/api/auth/resend-otp` | POST | Resend OTP code | Public |
 | `/api/auth/refresh` | POST | Refresh access token | Public |
-| `/api/auth/logout` | POST | User logout | Public |
 | `/api/auth/profile` | GET | Get user profile | Authenticated |
 | `/api/auth/google` | GET | Initiate Google OAuth | Public |
-| `/api/auth/google/callback` | GET | Handle OAuth callback | Public |
 
 ### Notes Management
 | Endpoint | Method | Description | Access |
@@ -71,6 +77,15 @@ Frontend → Backend (API) → Database → AI Integration (API)
 | `/api/notes/:id` | PUT | Update note | Authenticated |
 | `/api/notes/:id` | DELETE | Delete note | Authenticated |
 
+### Memories & Journal
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/memories` | GET | Fetch all memories | Authenticated |
+| `/api/memories` | POST | Create new memory | Authenticated |
+| `/api/journal` | GET | Fetch journal entries | Authenticated |
+| `/api/journal/today` | GET | Get today's journal entry | Authenticated |
+| `/api/journal` | POST | Create journal entry | Authenticated |
+
 ### Folders Management
 | Endpoint | Method | Description | Access |
 |----------|--------|-------------|--------|
@@ -79,19 +94,35 @@ Frontend → Backend (API) → Database → AI Integration (API)
 | `/api/folders/:id` | PUT | Update folder | Authenticated |
 | `/api/folders/:id` | DELETE | Delete folder | Authenticated |
 
-### Export & Sharing
+### Sharing & Collaboration
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/sharing/notes/:noteId/share` | POST | Create shareable link | Authenticated |
+| `/api/sharing/shared/:shareId` | GET | Access shared note | Public |
+| `/api/sharing/shared/:shareId` | PUT | Update shared note | Public (with edit permission) |
+| `/api/sharing/my-shares` | GET | Get user's shared notes | Authenticated |
+| `/api/sharing/shares/:shareId` | DELETE | Revoke share link | Authenticated |
+
+### Settings & Security
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/settings` | GET | Get user settings | Authenticated |
+| `/api/pins/set` | POST | Set PIN for section | Authenticated |
+| `/api/pins/verify` | POST | Verify PIN for access | Authenticated |
+
+### Recycle Bin
+| Endpoint | Method | Description | Access |
+|----------|--------|-------------|--------|
+| `/api/recycle-bin` | GET | Get deleted items | Authenticated |
+| `/api/recycle-bin/:id/restore` | POST | Restore deleted item | Authenticated |
+
+### Export
 | Endpoint | Method | Description | Access |
 |----------|--------|-------------|--------|
 | `/api/export/notes/:id/pdf` | GET | Generate PDF export | Authenticated |
-| `/api/export/notes/:id/share` | POST | Create shareable link | Authenticated |
-| `/api/export/shared/:shareId` | GET | Access shared note | Public |
 
-### System
-| Endpoint | Method | Description | Access |
-|----------|--------|-------------|--------|
-| `/api/health` | GET | API health check | Public |
 
-## Key Features
+## ✨ Key Features
 
 ### 🔐 Authentication & Security
 - JWT-based authentication with refresh tokens
@@ -114,6 +145,14 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - Note organization within folders
 - Duplicate title prevention
 
+### 💭 Memories & Journal Features
+- **Dedicated Memories Section**: Store and organize personal memories
+- **Daily Journal Entries**: Track daily thoughts and experiences
+- **PIN Protection**: Secure access to sensitive sections
+- **Enhanced Privacy**: Section-level security controls
+- **OTP Verification**: Additional security for sensitive operations
+- **Permanent Deletion**: Secure removal with OTP confirmation
+
 ### 🎨 Rich Text Editing
 - **Minimized Toolbar**: Aa dropdown with formatting options
 - **Text Formatting**: Bold, italic, underline, strikethrough
@@ -125,6 +164,14 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - **Utilities**: Find and replace, text color customization
 - **Keyboard Shortcuts**: Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+F
 
+### 🤝 Collaboration Features
+- **Smart Sharing**: Create secure, time-limited share links
+- **Custom Expiration**: 1 day to 10 years (3650 days)
+- **Permission Control**: View-only or edit access levels
+- **Anonymous Access**: No login required for shared notes
+- **Real-time Editing**: Collaborative editing on shared notes
+- **Access Management**: Track and revoke share links
+
 ### 🔍 Search & Organization
 - Global search across notes and folders by title/content
 - Advanced sorting (date created/updated, title A-Z/Z-A)
@@ -133,11 +180,23 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - Bulk operations (select and delete multiple items)
 - Responsive design with mobile-friendly interface
 
-### 📤 Export & Sharing
-- **PDF Export**: Generate and download notes as PDF
-- **Shareable Links**: Create time-limited public links
-- **Public Access**: View shared notes without authentication
-- **Export Modal**: User-friendly export interface
+### 📤 Export Features
+- **PDF Export**: Generate and download notes as PDF with proper formatting
+- **Download Management**: Automatic file naming and browser download handling
+
+### ⚙️ Advanced Settings
+- **User Preferences**: Customizable application settings
+- **Feature Toggles**: Enable/disable specific features
+- **Security Controls**: PIN protection for sensitive sections
+- **Profile Management**: Update user information and preferences
+- **Password Management**: Change password with OTP verification
+- **Account Security**: Profile deletion with confirmation
+
+### 🗑️ Recycle Bin & Data Management
+- **Soft Delete**: Recover accidentally deleted items
+- **Permanent Deletion**: Secure removal with OTP verification
+- **Bulk Operations**: Restore or permanently delete multiple items
+- **Auto Cleanup**: Automatic cleanup of expired items
 
 ### 🎯 User Experience
 - Responsive design with TailwindCSS
@@ -148,76 +207,7 @@ Frontend → Backend (API) → Database → AI Integration (API)
 - Split-view editor (hidden on mobile)
 - Note type indicators with emojis
 
-## Project Structure
-
-```
-noteBase/
-├── frontend/                 # Next.js 14 application
-│   ├── src/
-│   │   ├── app/             # App router pages
-│   │   │   ├── auth/        # Authentication pages
-│   │   │   ├── dashboard/   # Main dashboard
-│   │   │   ├── editor/      # Note editor pages
-│   │   │   ├── login/       # Login page
-│   │   │   ├── signup/      # Signup page
-│   │   │   └── shared/      # Shared notes access
-│   │   ├── components/      # Reusable UI components
-│   │   │   ├── AuthForm.js
-│   │   │   ├── Dashboard.js
-│   │   │   ├── NoteEditor.js
-│   │   │   ├── NoteCard.js
-│   │   │   ├── FolderCard.js
-│   │   │   ├── CreateNoteModal.js
-│   │   │   ├── CreateFolderModal.js
-│   │   │   ├── ExportModal.js
-│   │   │   └── GoogleAuthButton.js
-│   │   ├── hooks/           # Custom React hooks
-│   │   │   └── useAuth.js
-│   │   └── lib/             # API handlers, utilities
-│   │       └── api.js
-│   ├── public/              # Static assets
-│   ├── .env.local           # Environment variables
-│   ├── next.config.js       # Next.js configuration
-│   ├── tailwind.config.js   # TailwindCSS configuration
-│   └── package.json
-├── backend/                 # Express.js API server
-│   ├── src/
-│   │   ├── controllers/     # Route handlers
-│   │   │   ├── authController.js
-│   │   │   ├── notesController.js
-│   │   │   ├── foldersController.js
-│   │   │   ├── exportController.js
-│   │   │   ├── oauthController.js
-│   │   │   ├── profileController.js
-│   │   │   ├── tokenController.js
-│   │   │   └── logoutController.js
-│   │   ├── routes/          # API route definitions
-│   │   │   ├── authRoutes.js
-│   │   │   ├── notes.js
-│   │   │   ├── folders.js
-│   │   │   ├── export.js
-│   │   │   └── oauthRoutes.js
-│   │   ├── middleware/      # Auth, validation, error handling
-│   │   │   ├── auth.js
-│   │   │   ├── validation.js
-│   │   │   ├── errorHandler.js
-│   │   │   └── dataProtection.js
-│   │   ├── utils/           # JWT, bcrypt, helpers
-│   │   │   ├── jwt.js
-│   │   │   ├── bcrypt.js
-│   │   │   └── encryption.js
-│   │   ├── db/              # Database connection
-│   │   │   └── database.js
-│   │   └── app.js           # Express app configuration
-│   ├── prisma/              # Database schema and migrations
-│   │   └── schema.prisma
-│   ├── .env                 # Environment variables
-│   ├── server.js            # Server entry point
-│   └── package.json
-└── README.md
-```
-
-## Development Setup
+## 🚀 Development Setup
 
 ### Prerequisites
 - Node.js (v18+)
@@ -228,7 +218,7 @@ noteBase/
 ```bash
 cd backend
 npm install
-npm run dev  # Runs on http://localhost:5000
+npm start  # Runs on http://localhost:5000
 ```
 
 ### Frontend Setup
@@ -238,28 +228,70 @@ npm install
 npm run dev  # Runs on http://localhost:3000
 ```
 
-### Available Scripts
-
-#### Backend Scripts
-- `npm run dev` - Start development server with nodemon
-- `npm start` - Start production server
-
-#### Frontend Scripts
-- `npm run dev` - Start Next.js development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-
 ### Environment Configuration
 
-The application requires environment variables for:
-- Database connection (MongoDB Atlas)
-- JWT authentication secrets
-- Google OAuth credentials
-- Email service configuration (Gmail SMTP)
-- API endpoints
-- Server configuration
+#### Backend (.env)
+```bash
+PORT=5000
+NODE_ENV=development
+DATABASE_URL=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_key_here
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here
+FRONTEND_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+ENCRYPTION_KEY=your_32_byte_encryption_key
+```
 
-Refer to `.env.example` files in both frontend and backend directories for required variables.
+#### Frontend (.env.local)
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+## 📁 Project Structure
+
+```
+noteBase/
+├── frontend/                 # Next.js 14 application
+│   ├── src/
+│   │   ├── app/             # App router pages
+│   │   │   ├── dashboard/   # Main dashboard
+│   │   │   ├── editor/      # Note editor
+│   │   │   ├── memories/    # Memories section
+│   │   │   ├── journal/     # Journal section
+│   │   │   ├── settings/    # User settings
+│   │   │   ├── recycle-bin/ # Deleted items
+│   │   │   └── shared/      # Shared notes access
+│   │   ├── components/      # Reusable UI components
+│   │   │   ├── NoteEditor.js
+│   │   │   ├── ShareModal.js
+│   │   │   ├── SettingsModal.js
+│   │   │   └── ...
+│   │   ├── hooks/           # Custom React hooks
+│   │   └── lib/             # API handlers, utilities
+│   └── package.json
+├── backend/                 # Express.js API server
+│   ├── src/
+│   │   ├── controllers/     # Route handlers
+│   │   │   ├── authController.js
+│   │   │   ├── notesController.js
+│   │   │   ├── memoriesController.js
+│   │   │   ├── journalController.js
+│   │   │   ├── sharingController.js
+│   │   │   └── ...
+│   │   ├── routes/          # API route definitions
+│   │   ├── middleware/      # Auth, validation, error handling
+│   │   ├── models/          # Database models
+│   │   ├── utils/           # JWT, bcrypt, helpers
+│   │   └── db/              # Database connection
+│   └── package.json
+└── README.md
+```
+
+## 📈 Development Phases
 
 ### Phase 1: ✅ Authentication System (Completed)
 - JWT-based login/signup with refresh tokens
@@ -268,58 +300,69 @@ Refer to `.env.example` files in both frontend and backend directories for requi
 - Password reset functionality with OTP
 - Remember me feature with localStorage/sessionStorage
 - Protected routes and middleware
-- User management and profile system
-- Database integration with Mongoose
-- Secure password hashing with bcrypt
-- Rate limiting and security headers
 
 ### Phase 2: ✅ Notes CRUD Operations (Completed)
-- Create, read, update, delete notes
+- Create, read, update, delete notes and folders
 - Three note types: Normal, Journal, Memory
 - Rich text editor with minimized toolbar
-- Real-time content editing
-- Word count tracking
-- Auto-save functionality
-- Unsaved changes detection
-- Duplicate title prevention
+- Auto-save functionality with unsaved changes detection
+- Word count tracking and duplicate prevention
 
-### Phase 3: ✅ Advanced Features (Completed)
-- Search functionality across notes and folders
-- Sort by date, title (ascending/descending)
+### Phase 3: ✅ Memories & Journal Features (Completed)
+- Dedicated memories and journal sections
+- PIN protection for sensitive content
+- Enhanced privacy controls
+- OTP verification for critical operations
+- Secure deletion with confirmation
+
+### Phase 4: ✅ Advanced Features (Completed)
+- Search functionality across all content types
+- Advanced sorting and filtering options
 - Pagination for large datasets
 - Folder management system
-- Bulk operations (select and delete multiple items)
-- Responsive design with mobile support
+- Bulk operations and recycle bin
 
-### Phase 4: ✅ Export & Sharing (Completed)
-- PDF export functionality
-- Shareable links with expiration
-- Public access to shared notes
-- Export modal with options
+### Phase 5: ✅ Settings & Security (Completed)
+- Comprehensive user settings panel
+- Feature toggles and preferences
+- PIN protection for sections
+- Password management with OTP
+- Profile deletion with security measures
 
-### Phase 5: ✅ Enhanced UI/UX (Completed)
-- User dropdown with Profile/Settings/Logout
-- Minimized toolbar with Aa dropdown
-- Note type indicators with emojis
-- Responsive editor (hidden on mobile)
-- Centered toolbar layout
-- Modern interface design
+### Phase 6: ✅ Collaboration System (Completed)
+- Smart sharing with secure, time-limited links
+- Permission control (view-only or edit access)
+- Real-time collaborative editing
+- Access management and analytics
+- Anonymous editing capabilities
 
-### Phase 6: 📋 Upcoming Features
-- AI Integration (text summarization, grammar correction)
-- Theme customization (dark/light mode)
-- Collaborative editing
-- Real-time synchronization
-- Advanced note security features
+### Phase 7: 🚧 Final Features (In Progress)
+- **Dark Mode**: Theme switching functionality
+- **AI Integration**: Text summarization and grammar correction
+- **Landing Page**: Marketing/welcome page
+- **UI Polish**: Final animations and enhancements
 
-## Deployment
-- **Frontend**: Vercel with environment variables configured
-- **Backend**: Render with OAuth credentials and database URL
-- **Database**: MongoDB Atlas
-- **OAuth**: Google Cloud Console configuration
-- **Security**: CORS and security headers enabled
+## 🚀 Deployment
 
-## Contributing
+### Production Ready
+- **Frontend**: Vercel deployment configured
+- **Backend**: Render deployment configured
+- **Database**: MongoDB Atlas with production settings
+- **Environment**: Separate development and production configs
+- **Security**: Production-grade security headers and rate limiting
+
+### Available Scripts
+
+#### Backend Scripts
+- `npm start` - Start production server
+- `npm run dev` - Start development server (same as start)
+
+#### Frontend Scripts
+- `npm run dev` - Start Next.js development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/AmazingFeature`)
@@ -327,10 +370,10 @@ Refer to `.env.example` files in both frontend and backend directories for requi
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**NoteBase** combines advanced features and personalization to deliver a seamless experience similar to Apple Notes, with additional collaborative and AI-driven functionalities for modern note management.
+**NoteBase** - A modern, secure, and collaborative note-taking platform with advanced features for personal and team productivity.

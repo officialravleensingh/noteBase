@@ -6,7 +6,7 @@ import FolderCard from './FolderCard';
 import CreateNoteModal from './CreateNoteModal';
 import CreateFolderModal from './CreateFolderModal';
 import NoteEditor from './NoteEditor';
-import UserDropdown from './UserDropdown';
+import MainNavigation from './MainNavigation';
 
 export default function Dashboard({ user, logout }) {
   const [notes, setNotes] = useState([]);
@@ -48,7 +48,7 @@ export default function Dashboard({ user, logout }) {
       if (selectedFolder) {
         notesParams.folderId = selectedFolder;
       } else {
-        notesParams.noFolder = true;
+        notesParams.noFolder = 'true';
       }
       
       const [notesResponse, foldersResponse] = await Promise.all([
@@ -155,7 +155,6 @@ export default function Dashboard({ user, logout }) {
     folder.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Combine folders and notes, then limit to 15 items total for 5 rows
   const allItems = [...filteredFolders, ...filteredNotes];
   const displayedItems = allItems.slice(0, itemsPerPage);
   const displayedFolders = displayedItems.filter(item => item.name !== undefined);
@@ -173,28 +172,15 @@ export default function Dashboard({ user, logout }) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">NoteBase</h1>
-            </div>
-            <div className="flex items-center">
-              <UserDropdown user={user} onLogout={logout} />
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MainNavigation />
 
-      {/* Second Navigation Bar */}
       {!selectedNoteId && (
         <div className="bg-white border-b">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-14">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {selectedFolder ? `Folder: ${folders.find(f => (f.id || f._id) === selectedFolder)?.name}` : 'Dashboard'}
+                  {selectedFolder ? `Folder: ${folders.find(f => (f.id || f._id) === selectedFolder)?.name}` : 'Notes Dashboard'}
                 </h2>
                 {selectedFolder && (
                   <button
@@ -224,13 +210,10 @@ export default function Dashboard({ user, logout }) {
         </div>
       )}
 
-      {/* Main Content */}
       <div className="flex flex-1" style={{height: 'calc(100vh - 120px)'}}>
-        {/* Sidebar - only show when no note is selected */}
         {!selectedNoteId && (
           <div className="bg-white shadow-sm border-r flex flex-col h-full w-full">
             <main className="flex-1 py-4 px-4 sm:px-6 lg:px-8 flex flex-col overflow-y-auto h-full">
-              {/* Search and Controls */}
               <div className="mb-6 space-y-4">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <input
@@ -278,7 +261,6 @@ export default function Dashboard({ user, logout }) {
                 )}
               </div>
 
-              {/* Content grid */}
               {filteredNotes.length === 0 && filteredFolders.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500 text-lg">No items found</p>
@@ -300,7 +282,6 @@ export default function Dashboard({ user, logout }) {
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Show folders */}
                     {!selectedFolder && displayedFolders.map(folder => (
                       <FolderCard
                         key={folder.id || folder._id}
@@ -312,7 +293,6 @@ export default function Dashboard({ user, logout }) {
                         onSelect={() => handleItemSelect(folder.id || folder._id, 'folder')}
                       />
                     ))}
-                    {/* Show notes */}
                     {displayedNotes.map(note => (
                       <NoteCard
                         key={note.id || note._id}
@@ -322,11 +302,18 @@ export default function Dashboard({ user, logout }) {
                         selectionMode={selectionMode}
                         isSelected={selectedItems.includes(note.id || note._id)}
                         onItemSelect={() => handleItemSelect(note.id || note._id, 'note')}
+                        onNoteUpdate={(updatedNote) => {
+                          // Update the note in the local state
+                          setNotes(prevNotes => 
+                            prevNotes.map(n => 
+                              (n.id || n._id) === (updatedNote.id || updatedNote._id) ? updatedNote : n
+                            )
+                          );
+                        }}
                       />
                     ))}
                   </div>
                   
-                  {/* Dashboard Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-center items-center space-x-2 mt-8">
                       <button
@@ -364,7 +351,6 @@ export default function Dashboard({ user, logout }) {
           </div>
         )}
 
-        {/* Editor - full width when note is selected */}
         {selectedNoteId && (
           <div className="bg-white h-full w-full">
             <NoteEditor noteId={selectedNoteId} onClose={() => setSelectedNoteId(null)} />
@@ -372,7 +358,6 @@ export default function Dashboard({ user, logout }) {
         )}
       </div>
 
-      {/* Modals */}
       {showCreateNote && (
         <CreateNoteModal
           folders={folders}

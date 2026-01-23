@@ -1,134 +1,103 @@
-const puppeteer = require('puppeteer');
-const { v4: uuidv4 } = require('uuid');
 const Note = require('../models/Note');
-const SharedNote = require('../models/SharedNote');
+const puppeteer = require('puppeteer');
 
-const generatePDF = async (req, res) => {
+const exportToPDF = async (req, res) => {
+  let browser;
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-
-    const note = await Note.findOne({ _id: id, userId }).populate('folderId', 'name');
-
+    
+    const note = await Note.findOne({ _id: id, userId: req.user.id });
     if (!note) {
       return res.status(404).json({ error: 'Note not found' });
     }
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
     });
-
+    
     const page = await browser.newPage();
     
-    const htmlContent = `
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
-          <meta charset="UTF-8">
+          <meta charset="utf-8">
+          <title>${note.title || 'Untitled'}</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; line-height: 1.6; }
-            h1 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-            .meta { color: #666; font-size: 14px; margin-bottom: 30px; }
-            .content { font-size: 16px; }
-            ul, ol { margin: 16px 0; padding-left: 24px; }
-            li { margin: 4px 0; }
-            .arrow-list { list-style: none; }
-            .arrow-list li:before { content: '→ '; color: #666; }
-            table { border-collapse: collapse; width: 100%; margin: 16px 0; }
-            td, th { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f5f5f5; }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 40px; 
+              line-height: 1.6; 
+              color: #333;
+            }
+            h1 { 
+              color: #333; 
+              border-bottom: 2px solid #eee; 
+              padding-bottom: 10px; 
+              margin-bottom: 20px;
+            }
+            .meta { 
+              color: #666; 
+              font-size: 14px; 
+              margin-bottom: 30px; 
+              padding: 10px;
+              background: #f9f9f9;
+              border-radius: 5px;
+            }
+            .content { 
+              margin-top: 20px; 
+              font-size: 14px;
+            }
+            .content img {
+              max-width: 100%;
+              height: auto;
+            }
           </style>
         </head>
         <body>
-          <h1>${note.title}</h1>
+          <h1>${note.title || 'Untitled'}</h1>
           <div class="meta">
-            ${note.folderId ? `Folder: ${note.folderId.name} | ` : ''}
-            Created: ${new Date(note.createdAt).toLocaleDateString()}
+            <p><strong>Created:</strong> ${new Date(note.createdAt).toLocaleDateString()}</p>
+            <p><strong>Updated:</strong> ${new Date(note.updatedAt).toLocaleDateString()}</p>
           </div>
-          <div class="content">${note.content}</div>
+          <div class="content">${note.content || '<p>No content</p>'}</div>
         </body>
       </html>
     `;
-
-    await page.setContent(htmlContent);
+    
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
     const pdf = await page.pdf({
       format: 'A4',
-      margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' }
+      printBackground: true,
+      margin: { top: '1in', bottom: '1in', left: '1in', right: '1in' }
     });
-
-    await browser.close();
-
+    
+    const filename = `${(note.title || 'note').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+    
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${note.title}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdf.length);
     res.send(pdf);
-
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
-  }
-};
-
-const generateShareableLink = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const note = await Note.findOne({ _id: id, userId });
-
-    if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
-    }
-
-    const shareId = uuidv4();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-    const sharedNote = new SharedNote({
-      _id: shareId,
-      noteId: id,
-      userId,
-      expiresAt
-    });
     
-    await sharedNote.save();
-
-    const shareUrl = `${process.env.FRONTEND_URL}/shared/${shareId}`;
-    
-    res.json({ shareUrl, expiresAt });
-
   } catch (error) {
-    console.error('Share link generation error:', error);
-    res.status(500).json({ error: 'Failed to generate share link' });
-  }
-};
-
-const getSharedNote = async (req, res) => {
-  try {
-    const { shareId } = req.params;
-
-    const sharedNote = await SharedNote.findById(shareId)
-      .populate({
-        path: 'noteId',
-        populate: [
-          { path: 'folderId', select: 'name' },
-          { path: 'userId', select: 'name' }
-        ]
-      });
-
-    if (!sharedNote || sharedNote.expiresAt < new Date()) {
-      return res.status(404).json({ error: 'Shared note not found or expired' });
+    console.error('PDF Export Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate PDF' });
     }
-
-    res.json({ note: sharedNote.noteId });
-
-  } catch (error) {
-    console.error('Shared note fetch error:', error);
-    res.status(500).json({ error: 'Failed to fetch shared note' });
+  } finally {
+    if (browser) {
+      await browser.close().catch(console.error);
+    }
   }
 };
 
 module.exports = {
-  generatePDF,
-  generateShareableLink,
-  getSharedNote
+  exportToPDF
 };

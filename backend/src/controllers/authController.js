@@ -3,6 +3,7 @@ const { hashPassword, comparePassword } = require('../utils/bcrypt');
 const { generateTokenPair } = require('../utils/jwt');
 const { createOTP, verifyOTP } = require('../utils/otpService');
 const { sendOTPEmail } = require('../utils/emailService');
+const { cleanupExpiredAccounts, cancelAccountDeletion } = require('../utils/cleanup');
 
 const signup = async (req, res) => {
   try {
@@ -24,7 +25,6 @@ const signup = async (req, res) => {
 
     await user.save();
 
-    // Generate and send OTP
     const otp = await createOTP(email, 'signup');
     const emailSent = await sendOTPEmail(email, otp, 'signup');
 
@@ -83,6 +83,12 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    try {
+      await cleanupExpiredAccounts();
+    } catch (cleanupError) {
+      console.error('Cleanup error during login:', cleanupError);
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ error: 'Invalid credentials' });
@@ -90,6 +96,10 @@ const login = async (req, res) => {
 
     if (!user.isVerified) {
       return res.status(400).json({ error: 'Please verify your email first' });
+    }
+
+    if (user.deletionScheduledAt) {
+      await cancelAccountDeletion(user._id);
     }
 
     const isValidPassword = await comparePassword(password, user.password);
@@ -178,11 +188,196 @@ const resendOTP = async (req, res) => {
   }
 };
 
+const sendProfileOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: 'Invalid user' });
+    }
+
+    const otp = await createOTP(email, 'profile-update');
+    const emailSent = await sendOTPEmail(email, otp, 'profile-update');
+
+    if (!emailSent) {
+      return res.status(500).json({ error: 'Failed to send OTP' });
+    }
+
+    res.json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
+const verifyProfileOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: 'Invalid user' });
+    }
+
+    const isValidOTP = await verifyOTP(email, otp, 'profile-update');
+    if (!isValidOTP) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    res.json({ message: 'OTP verified successfully' });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, religion, dob, address, pincode, city, state, country, mobile } = req.body;
+
+    const updateData = {
+      name,
+      religion,
+      dob: dob ? new Date(dob) : undefined,
+      address,
+      pincode,
+      city,
+      state,
+      country,
+      mobile
+    };
+
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined || updateData[key] === '') {
+        delete updateData[key];
+      }
+    });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        religion: user.religion,
+        dob: user.dob,
+        address: user.address,
+        pincode: user.pincode,
+        city: user.city,
+        state: user.state,
+        country: user.country,
+        mobile: user.mobile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
+const sendPasswordChangeOTP = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const isValidPassword = await comparePassword(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const otp = await createOTP(user.email, 'password-change');
+    const emailSent = await sendOTPEmail(user.email, otp, 'password-change');
+
+    if (!emailSent) {
+      return res.status(500).json({ error: 'Failed to send OTP' });
+    }
+
+    res.json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
+const verifyPasswordChangeOTP = async (req, res) => {
+  try {
+    const { otp, currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const isValidPassword = await comparePassword(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const isValidOTP = await verifyOTP(user.email, otp, 'password-change');
+    if (!isValidOTP) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await User.findByIdAndUpdate(userId, { password: hashedPassword });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    const isValidPassword = await comparePassword(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await User.findByIdAndUpdate(userId, { password: hashedPassword });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+};
+
 module.exports = { 
   signup, 
   verifyEmail, 
   login, 
   forgotPassword, 
   resetPassword, 
-  resendOTP 
+  resendOTP,
+  sendProfileOTP,
+  verifyProfileOTP,
+  updateProfile,
+  sendPasswordChangeOTP,
+  verifyPasswordChangeOTP,
+  changePassword
 };

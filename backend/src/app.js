@@ -4,14 +4,19 @@ const authRoutes = require('./routes/authRoutes');
 const oauthRoutes = require('./routes/oauthRoutes');
 const notesRoutes = require('./routes/notes');
 const foldersRoutes = require('./routes/folders');
+const pinRoutes = require('./routes/pins');
+const settingsRoutes = require('./routes/settings');
+const memoriesRoutes = require('./routes/memories');
+const journalRoutes = require('./routes/journal');
+const recycleBinRoutes = require('./routes/recycleBin');
+const sharingRoutes = require('./routes/sharing');
 const exportRoutes = require('./routes/export');
+
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
 
-// Trust proxy for rate limiting
 app.set('trust proxy', 1);
-// Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -19,7 +24,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
@@ -27,33 +31,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-refresh-token']
 }));
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// // Request logging in development
-// if (process.env.NODE_ENV === 'development') {
-//   app.use((req, res, next) => {
-//     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-//     next();
-//   });
-// }
-
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/auth', oauthRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/folders', foldersRoutes);
+app.use('/api/pins', pinRoutes);
+app.use('/api', settingsRoutes);
+app.use('/api/memories', memoriesRoutes);
+app.use('/api/journal', journalRoutes);
+app.use('/api/recycle-bin', recycleBinRoutes);
+app.use('/api/sharing', sharingRoutes);
 app.use('/api/export', exportRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// 404 handler
 app.use(notFound);
-// Global error handler
 app.use(errorHandler);
 
 module.exports = app;

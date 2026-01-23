@@ -25,18 +25,12 @@ const apiRequest = async (endpoint, options = {}) => {
       ...options
     };
     
-    // Add timeout for requests
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     config.signal = controller.signal;
     
     if (options.body && typeof options.body === 'object') {
-      try {
-        config.body = JSON.stringify(options.body);
-      } catch (jsonError) {
-        clearTimeout(timeoutId);
-        throw new Error('Failed to serialize request body');
-      }
+      config.body = JSON.stringify(options.body);
     }
 
     let response;
@@ -48,8 +42,7 @@ const apiRequest = async (endpoint, options = {}) => {
       if (networkError.name === 'AbortError') {
         throw new Error('Request timeout. Please try again.');
       }
-      console.error('Network error:', networkError.message);
-      throw new Error('Network error. Please check your connection.');
+      throw new Error(`Network error: ${networkError.message}`);
     }
     
     const newAccessToken = response.headers.get('x-access-token');
@@ -74,8 +67,7 @@ const apiRequest = async (endpoint, options = {}) => {
     try {
       data = await response.json();
     } catch (parseError) {
-      console.error('Failed to parse response:', parseError.message);
-      throw new Error('Invalid response format from server');
+      throw new Error(`Invalid response format from server. Status: ${response.status}`);
     }
     if (!response.ok) {
       const errorMessage = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
@@ -88,54 +80,29 @@ const apiRequest = async (endpoint, options = {}) => {
 
     return data;
   } catch (error) {
-    console.error('API request failed:', error.message);
     throw error;
   }
 };
 
 export const signup = async (userData) => {
-  try {
-    if (!userData || !userData.email || !userData.password) {
-      throw new Error('Email and password are required');
-    }
-    return await apiRequest('/auth/signup', {
-      method: 'POST',
-      body: userData,
-    });
-  } catch (error) {
-    console.error('Signup error:', error.message);
-    throw error;
-  }
+  return await apiRequest('/auth/signup', {
+    method: 'POST',
+    body: userData,
+  });
 };
 
 export const login = async (credentials) => {
-  try {
-    if (!credentials || !credentials.email || !credentials.password) {
-      throw new Error('Email and password are required');
-    }
-    return await apiRequest('/auth/login', {
-      method: 'POST',
-      body: credentials,
-    });
-  } catch (error) {
-    console.error('Login error:', error.message);
-    throw error;
-  }
+  return await apiRequest('/auth/login', {
+    method: 'POST',
+    body: credentials,
+  });
 };
 
 export const refreshToken = async (refreshToken) => {
-  try {
-    if (!refreshToken) {
-      throw new Error('Refresh token is required');
-    }
-    return await apiRequest('/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    });
-  } catch (error) {
-    console.error('Token refresh error:', error.message);
-    throw error;
-  }
+  return await apiRequest('/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  });
 };
 
 export const notesAPI = {
@@ -154,6 +121,22 @@ export const notesAPI = {
   }),
   delete: (id) => apiRequest(`/notes/${id}`, {
     method: 'DELETE'
+  }),
+  // Note locking APIs
+  lock: (id, pin) => apiRequest(`/notes/${id}/lock`, {
+    method: 'POST',
+    body: { pin }
+  }),
+  unlock: (id, pin) => apiRequest(`/notes/${id}/unlock`, {
+    method: 'POST',
+    body: { pin }
+  }),
+  requestUnlockOTP: (id) => apiRequest(`/notes/${id}/request-unlock-otp`, {
+    method: 'POST'
+  }),
+  verifyUnlockOTP: (id, otp) => apiRequest(`/notes/${id}/verify-unlock-otp`, {
+    method: 'POST',
+    body: { otp }
   })
 };
 
@@ -175,38 +158,220 @@ export const foldersAPI = {
   })
 };
 
-export const exportAPI = {
-  generatePDF: async (noteId) => {
-    try {
-      const accessToken = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
-      if (!accessToken) {
-        throw new Error('Authentication required');
-      }
-      const response = await fetch(`${API_URL}/export/notes/${noteId}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to generate PDF');
-      }
-      return response.blob();
-    } catch (error) {
-      console.error('PDF generation error:', error.message);
-      throw error;
-    }
-  },
-  generateShareLink: (noteId) => apiRequest(`/export/notes/${noteId}/share`, {
+export const pinAPI = {
+  setPin: (section, pin) => apiRequest('/pins/set', {
+    method: 'POST',
+    body: { section, pin }
+  }),
+  verifyPin: (section, pin) => apiRequest('/pins/verify', {
+    method: 'POST',
+    body: { section, pin }
+  }),
+  checkPin: (section) => apiRequest(`/pins/check/${section}`),
+  removePin: (section) => apiRequest('/pins/remove', {
+    method: 'DELETE',
+    body: { section }
+  })
+};
+
+export const settingsAPI = {
+  getSettings: () => apiRequest('/settings'),
+  requestPinSetupOTP: (section) => apiRequest('/pin-setup/request-otp', {
+    method: 'POST',
+    body: { section }
+  }),
+  verifyPinSetupOTP: (section, otp, pin) => apiRequest('/pin-setup/verify-otp', {
+    method: 'POST',
+    body: { section, otp, pin }
+  }),
+  requestPasswordChangeOTP: () => apiRequest('/password-change/request-otp', {
     method: 'POST'
   }),
-  getSharedNote: (shareId) => apiRequest(`/export/shared/${shareId}`)
+  verifyPasswordChangeOTP: (otp, newPassword) => apiRequest('/password-change/verify-otp', {
+    method: 'POST',
+    body: { otp, newPassword }
+  }),
+  requestProfileDeletionOTP: () => apiRequest('/profile-deletion/request-otp', {
+    method: 'POST'
+  }),
+  verifyProfileDeletionOTP: (otp) => apiRequest('/profile-deletion/verify-otp', {
+    method: 'POST',
+    body: { otp }
+  }),
+  cancelProfileDeletion: () => apiRequest('/profile-deletion/cancel', {
+    method: 'POST'
+  })
+};
+
+export const sectionsAPI = {
+  getSettings: () => apiRequest('/sections/settings'),
+  updateFeatureToggles: (featuresEnabled) => apiRequest('/sections/settings/features', {
+    method: 'PUT',
+    body: { featuresEnabled }
+  }),
+  requestFeatureToggleOTP: (data) => apiRequest('/sections/settings/features/request-otp', {
+    method: 'POST',
+    body: data
+  }),
+  verifyFeatureToggleOTP: (data) => apiRequest('/sections/settings/features/verify-otp', {
+    method: 'POST',
+    body: data
+  }),
+  requestPasswordChangeOTP: (data) => apiRequest('/auth/send-password-change-otp', {
+    method: 'POST',
+    body: data
+  }),
+  verifyPasswordChangeOTP: (data) => apiRequest('/auth/verify-password-change-otp', {
+    method: 'POST',
+    body: data
+  })
+};
+
+export const memoriesAPI = {
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/memories${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id) => apiRequest(`/memories/${id}`),
+  create: (memoryData) => apiRequest('/memories', {
+    method: 'POST',
+    body: memoryData
+  }),
+  update: (id, memoryData) => apiRequest(`/memories/${id}`, {
+    method: 'PUT',
+    body: memoryData
+  }),
+  delete: (id) => apiRequest(`/memories/${id}`, {
+    method: 'DELETE'
+  }),
+  requestDeleteOTP: (id) => apiRequest(`/memories/${id}/request-delete-otp`, {
+    method: 'POST'
+  }),
+  permanentDelete: (id, otp) => apiRequest(`/memories/${id}/permanent`, {
+    method: 'DELETE',
+    body: { otp }
+  })
+};
+
+export const journalAPI = {
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/journal${queryString ? `?${queryString}` : ''}`);
+  },
+  getTodayEntry: () => apiRequest('/journal/today'),
+  getByDate: (date) => apiRequest(`/journal/date/${date}`),
+  create: (entryData) => apiRequest('/journal', {
+    method: 'POST',
+    body: entryData
+  }),
+  update: (id, entryData) => apiRequest(`/journal/${id}`, {
+    method: 'PUT',
+    body: entryData
+  }),
+  delete: (id) => apiRequest(`/journal/${id}`, {
+    method: 'DELETE'
+  }),
+  requestDeleteOTP: (id) => apiRequest(`/journal/${id}/request-delete-otp`, {
+    method: 'POST'
+  }),
+  permanentDelete: (id, otp) => apiRequest(`/journal/${id}/permanent`, {
+    method: 'DELETE',
+    body: { otp }
+  })
+};
+
+export const recycleBinAPI = {
+  getAll: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/recycle-bin${queryString ? `?${queryString}` : ''}`);
+  },
+  restore: (id) => apiRequest(`/recycle-bin/${id}/restore`, {
+    method: 'POST'
+  }),
+  requestDeleteOTP: (id) => apiRequest(`/recycle-bin/${id}/request-delete-otp`, {
+    method: 'POST'
+  }),
+  permanentDelete: (id, otp) => apiRequest(`/recycle-bin/${id}/permanent`, {
+    method: 'DELETE',
+    body: { otp }
+  }),
+  requestEmptyOTP: () => apiRequest('/recycle-bin/empty/request-otp', {
+    method: 'POST'
+  }),
+  emptyBin: (otp) => apiRequest('/recycle-bin/empty', {
+    method: 'DELETE',
+    body: { otp }
+  })
+};
+
+export const exportAPI = {
+  exportToPDF: async (noteId) => {
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+    
+    const response = await fetch(`${API_URL}/export/notes/${noteId}/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        ...(refreshToken && { 'x-refresh-token': refreshToken })
+      }
+    });
+    
+    // Handle token refresh
+    const newAccessToken = response.headers.get('x-access-token');
+    const newRefreshToken = response.headers.get('x-refresh-token');
+    
+    if (newAccessToken) {
+      if (localStorage.getItem('accessToken')) {
+        localStorage.setItem('accessToken', newAccessToken);
+      } else {
+        sessionStorage.setItem('accessToken', newAccessToken);
+      }
+    }
+    if (newRefreshToken) {
+      if (localStorage.getItem('refreshToken')) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+      } else {
+        sessionStorage.setItem('refreshToken', newRefreshToken);
+      }
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Export failed' }));
+      throw new Error(errorData.error || 'Export failed');
+    }
+    
+    return response;
+  }
+};
+
+export const sharingAPI = {
+  createShareLink: (noteId, options = {}) => apiRequest(`/sharing/notes/${noteId}/share`, {
+    method: 'POST',
+    body: options
+  }),
+  getSharedNote: (shareId) => apiRequest(`/sharing/shared/${shareId}`),
+  updateSharedNote: (shareId, noteData) => apiRequest(`/sharing/shared/${shareId}`, {
+    method: 'PUT',
+    body: noteData
+  }),
+  getMyShares: () => apiRequest('/sharing/my-shares'),
+  revokeShare: (shareId) => apiRequest(`/sharing/shares/${shareId}`, {
+    method: 'DELETE'
+  })
 };
 
 export const authAPI = {
   signup,
   login,
   refreshToken
+};
+
+// Export api object for backward compatibility
+export const api = {
+  get: (endpoint) => apiRequest(endpoint),
+  post: (endpoint, data) => apiRequest(endpoint, { method: 'POST', body: data }),
+  put: (endpoint, data) => apiRequest(endpoint, { method: 'PUT', body: data }),
+  delete: (endpoint) => apiRequest(endpoint, { method: 'DELETE' })
 };
 
 export default apiRequest;

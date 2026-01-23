@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      // Password is required only for non-OAuth users
       return !this.isOAuthUser;
     }
   },
@@ -26,6 +25,37 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String
   },
+  religion: {
+    type: String,
+    trim: true
+  },
+  dob: {
+    type: Date
+  },
+  address: {
+    type: String,
+    trim: true
+  },
+  pincode: {
+    type: String,
+    trim: true
+  },
+  city: {
+    type: String,
+    trim: true
+  },
+  state: {
+    type: String,
+    trim: true
+  },
+  country: {
+    type: String,
+    trim: true
+  },
+  mobile: {
+    type: String,
+    trim: true
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -36,6 +66,10 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: {
     type: Date
+  },
+  deletionScheduledAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

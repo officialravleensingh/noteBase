@@ -38,9 +38,11 @@ const generateTokenPair = (userId) => {
       { expiresIn: process.env.JWT_EXPIRE }
     );
     
+    // Use JWT_REFRESH_SECRET if available, otherwise fallback to JWT_SECRET
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
     const refreshToken = jwt.sign(
       { userId },
-      process.env.JWT_SECRET,
+      refreshSecret,
       { expiresIn: process.env.JWT_REFRESH_EXPIRE }
     );
     
@@ -51,7 +53,7 @@ const generateTokenPair = (userId) => {
   }
 };
 
-const verifyToken = (token) => {
+const verifyToken = (token, isRefreshToken = false) => {
   try {
     if (!token) {
       throw new Error('Token is required for verification');
@@ -60,7 +62,12 @@ const verifyToken = (token) => {
       throw new Error('JWT_SECRET environment variable is not set');
     }
     
-    return jwt.verify(token, process.env.JWT_SECRET);
+    // Use appropriate secret based on token type
+    const secret = isRefreshToken 
+      ? (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET)
+      : process.env.JWT_SECRET;
+    
+    return jwt.verify(token, secret);
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       throw new Error('Invalid token format');

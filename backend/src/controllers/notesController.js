@@ -1,5 +1,11 @@
 const Note = require('../models/Note');
 const Folder = require('../models/Folder');
+const RecycleBin = require('../models/RecycleBin');
+const NoteLockOTP = require('../models/NoteLockOTP');
+const { hashPassword, comparePassword } = require('../utils/bcrypt');
+const { createOTP } = require('../utils/otpService');
+const { sendOTPEmail } = require('../utils/emailService');
+const User = require('../models/User');
 
 const getAllNotes = async (req, res) => {
   try {
@@ -93,7 +99,6 @@ const createNote = async (req, res) => {
 
     let noteTitle = title?.trim();
     
-    // Handle different note types
     if (type === 'journal') {
       const today = new Date().toLocaleDateString('en-US', {
         year: 'numeric',
@@ -101,7 +106,6 @@ const createNote = async (req, res) => {
         day: 'numeric'
       });
       
-      // Check if journal entry for today already exists
       const existingJournal = await Note.findOne({
         userId,
         type: 'journal',
@@ -121,6 +125,7 @@ const createNote = async (req, res) => {
       noteTitle = `Journal - ${today}`;
     } else if (type === 'memory') {
       if (!noteTitle) {
+        // Generate unique Memory title
         const existingMemories = await Note.find({
           userId,
           type: 'memory',
@@ -153,8 +158,8 @@ const createNote = async (req, res) => {
         }
       }
     } else {
-      // Normal note logic
       if (!noteTitle) {
+        // Generate unique Untitled title
         const existingNotes = await Note.find({
           userId,
           title: { $regex: /^Untitled( \d+)?$/ }
@@ -187,7 +192,6 @@ const createNote = async (req, res) => {
       }
     }
 
-    // Check for duplicate titles (except for journal entries)
     if (type !== 'journal') {
       const existingNote = await Note.findOne({ userId, title: noteTitle });
       if (existingNote) {
@@ -246,7 +250,13 @@ const updateNote = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Note not found' });
     }
 
-    const updateData = {};
+    if (existingNote.isLocked) {
+      return res.status(403).json({ success: false, message: 'Note is locked. Please unlock it first.' });
+    }
+
+    const updateData = {
+      lastModified: new Date()
+    };
     if (title !== undefined) updateData.title = title.trim();
     if (content !== undefined) updateData.content = content.trim();
     if (folderId !== undefined) updateData.folderId = folderId || null;
@@ -278,9 +288,16 @@ const deleteNote = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Note not found' });
     }
 
+    await RecycleBin.create({
+      userId,
+      itemType: 'note',
+      itemId: existingNote._id,
+      originalData: existingNote.toObject()
+    });
+
     await Note.findOneAndDelete({ _id: id, userId });
 
-    res.json({ success: true, message: 'Note deleted successfully' });
+    res.json({ success: true, message: 'Note moved to recycle bin' });
   } catch (error) {
     console.error('Delete note error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete note' });
@@ -298,10 +315,26 @@ const getNoteById = async (req, res) => {
 
     const note = await Note.findOne({ _id: id, userId })
       .populate('folderId', 'name')
-      .select('title content type createdAt updatedAt folderId');
+      .select('title content type createdAt updatedAt folderId isLocked lockCreatedAt lastModified');
 
     if (!note) {
       return res.status(404).json({ success: false, message: 'Note not found' });
+    }
+
+    if (note.isLocked) {
+      return res.json({ 
+        success: true, 
+        note: {
+          _id: note._id,
+          title: note.title,
+          type: note.type,
+          isLocked: true,
+          lockCreatedAt: note.lockCreatedAt,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+          folderId: note.folderId
+        }
+      });
     }
 
     res.json({ success: true, note });
@@ -311,10 +344,174 @@ const getNoteById = async (req, res) => {
   }
 };
 
+const lockNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pin } = req.body;
+    const userId = req.user.id;
+
+    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
+    }
+
+    const note = await Note.findOne({ _id: id, userId });
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found' });
+    }
+
+    if (note.isLocked) {
+      return res.status(400).json({ success: false, message: 'Note is already locked' });
+    }
+
+    const hashedPin = await hashPassword(pin);
+    
+    await Note.findOneAndUpdate(
+      { _id: id, userId },
+      {
+        isLocked: true,
+        lockPin: hashedPin,
+        lockCreatedAt: new Date()
+      }
+    );
+
+    res.json({ success: true, message: 'Note locked successfully' });
+  } catch (error) {
+    console.error('Lock note error:', error);
+    res.status(500).json({ success: false, message: 'Failed to lock note' });
+  }
+};
+
+const unlockNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pin } = req.body;
+    const userId = req.user.id;
+
+    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
+    }
+
+    const note = await Note.findOne({ _id: id, userId });
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found' });
+    }
+
+    if (!note.isLocked) {
+      return res.status(400).json({ success: false, message: 'Note is not locked' });
+    }
+
+    const isValidPin = await comparePassword(pin, note.lockPin);
+    if (!isValidPin) {
+      return res.status(400).json({ success: false, message: 'Invalid PIN' });
+    }
+
+    await Note.findOneAndUpdate(
+      { _id: id, userId },
+      {
+        isLocked: false,
+        lockPin: null,
+        lockCreatedAt: null
+      }
+    );
+
+    res.json({ success: true, message: 'Note unlocked successfully' });
+  } catch (error) {
+    console.error('Unlock note error:', error);
+    res.status(500).json({ success: false, message: 'Failed to unlock note' });
+  }
+};
+
+const requestUnlockOTP = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const note = await Note.findOne({ _id: id, userId });
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found' });
+    }
+
+    if (!note.isLocked) {
+      return res.status(400).json({ success: false, message: 'Note is not locked' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const otp = await createOTP(user.email, 'note-unlock');
+
+    const emailSent = await sendOTPEmail(user.email, otp, 'note-unlock');
+    if (!emailSent) {
+      return res.status(500).json({ success: false, message: 'Failed to send OTP email' });
+    }
+
+    res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (error) {
+    console.error('Request unlock OTP error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send OTP' });
+  }
+};
+
+const verifyUnlockOTP = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { otp } = req.body;
+    const userId = req.user.id;
+
+    if (!otp || otp.length !== 6) {
+      return res.status(400).json({ success: false, message: 'OTP must be 6 digits' });
+    }
+
+    const note = await Note.findOne({ _id: id, userId });
+    if (!note) {
+      return res.status(404).json({ success: false, message: 'Note not found' });
+    }
+
+    if (!note.isLocked) {
+      return res.status(400).json({ success: false, message: 'Note is not locked' });
+    }
+
+    const otpRecord = await NoteLockOTP.findOne({
+      noteId: id,
+      userId,
+      otp,
+      purpose: 'unlock',
+      isUsed: false,
+      expiresAt: { $gt: new Date() }
+    });
+
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    await NoteLockOTP.findByIdAndUpdate(otpRecord._id, { isUsed: true });
+
+    await Note.findOneAndUpdate(
+      { _id: id, userId },
+      {
+        isLocked: false,
+        lockPin: null,
+        lockCreatedAt: null
+      }
+    );
+
+    res.json({ success: true, message: 'Note unlocked successfully' });
+  } catch (error) {
+    console.error('Verify unlock OTP error:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify OTP' });
+  }
+};
+
 module.exports = {
   getAllNotes,
   createNote,
   updateNote,
   deleteNote,
-  getNoteById
+  getNoteById,
+  lockNote,
+  unlockNote,
+  requestUnlockOTP,
+  verifyUnlockOTP
 };
