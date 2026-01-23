@@ -3,12 +3,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NoteLockModal from './NoteLockModal';
 import ExportModal from './ExportModal';
+import ActivityLogModal from './ActivityLogModal';
 
 export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSelected, onItemSelect, onNoteUpdate }) {
   const router = useRouter();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLockModal, setShowLockModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const [noteState, setNoteState] = useState(note);
 
   const formatDate = (dateString) => {
@@ -112,6 +114,16 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
           <button
             onClick={(e) => {
               e.stopPropagation();
+              setShowActivityLog(true);
+            }}
+            className="text-gray-400 hover:text-orange-600 text-sm"
+            title="View activity log"
+          >
+            Activity
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               setShowExportModal(true);
             }}
             className="text-gray-400 hover:text-green-600 text-sm"
@@ -164,6 +176,20 @@ export default function NoteCard({ note, onDelete, onSelect, selectionMode, isSe
         <span>Updated: {formatDate(noteState.updatedAt)}</span>
         <span>{noteState.isLocked ? 'Locked' : `${getWordCount(noteState.content)} words`}</span>
       </div>
+
+      {/* Activity Log Modal */}
+      <ActivityLogModal
+        noteId={note.id || note._id}
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        onRevert={() => {
+          // Refresh note data after revert
+          if (onNoteUpdate) {
+            // Trigger parent to refresh data
+            window.location.reload();
+          }
+        }}
+      />
 
       {/* Export Modal */}
       <ExportModal

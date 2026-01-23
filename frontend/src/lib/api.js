@@ -357,6 +357,10 @@ export const sharingAPI = {
   getMyShares: () => apiRequest('/sharing/my-shares'),
   revokeShare: (shareId) => apiRequest(`/sharing/shares/${shareId}`, {
     method: 'DELETE'
+  }),
+  getActivityLog: (noteId) => apiRequest(`/sharing/notes/${noteId}/activity-log`),
+  revertChange: (logId) => apiRequest(`/sharing/revert/${logId}`, {
+    method: 'POST'
   })
 };
 

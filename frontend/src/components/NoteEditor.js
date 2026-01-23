@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { notesAPI, foldersAPI } from '../lib/api';
 import ShareModal from './ShareModal';
 import ExportModal from './ExportModal';
+import ActivityLogModal from './ActivityLogModal';
 
 export default function NoteEditor({ noteId, onClose }) {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function NoteEditor({ noteId, onClose }) {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [findText, setFindText] = useState('');
@@ -418,6 +420,12 @@ export default function NoteEditor({ noteId, onClose }) {
                 ))}
               </select>
               
+              <button
+                onClick={() => setShowActivityLog(true)}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm"
+              >
+                Activity
+              </button>
               <button
                 onClick={() => setShowExportModal(true)}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
@@ -855,6 +863,16 @@ export default function NoteEditor({ noteId, onClose }) {
         noteTitle={title}
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
+      />
+
+      <ActivityLogModal
+        noteId={noteId}
+        isOpen={showActivityLog}
+        onClose={() => setShowActivityLog(false)}
+        onRevert={() => {
+          // Refresh note data after revert
+          fetchData();
+        }}
       />
 
       {showFindReplace && (

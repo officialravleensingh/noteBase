@@ -1,5 +1,6 @@
 const SharedNote = require('../models/SharedNote');
 const Note = require('../models/Note');
+const CollaborationLog = require('../models/CollaborationLog');
 const crypto = require('crypto');
 
 const createShareLink = async (req, res) => {
@@ -95,10 +96,57 @@ const updateSharedNote = async (req, res) => {
     if (!sharedNote) {
       return res.status(404).json({ error: 'Shared note not found or no edit permission' });
     }
+
+    const currentNote = sharedNote.noteId;
+    const collaboratorIP = req.ip || req.connection.remoteAddress || 'unknown';
+    
+    // Only log if there are actual changes
+    const hasChanges = (title && title !== currentNote.title) || (content && content !== currentNote.content);
+    
+    if (!hasChanges) {
+      return res.json({
+        note: {
+          _id: currentNote._id,
+          title: currentNote.title,
+          content: currentNote.content,
+          type: currentNote.type,
+          createdAt: currentNote.createdAt,
+          updatedAt: currentNote.updatedAt
+        }
+      });
+    }
+    
+    // Log title change if different
+    if (title && title !== currentNote.title) {
+      await CollaborationLog.create({
+        noteId: currentNote._id,
+        shareId,
+        changeType: 'title',
+        oldValue: currentNote.title || '',
+        newValue: title,
+        collaboratorIP
+      });
+    }
+    
+    // Log content change if different
+    if (content && content !== currentNote.content) {
+      await CollaborationLog.create({
+        noteId: currentNote._id,
+        shareId,
+        changeType: 'content',
+        oldValue: currentNote.content || '',
+        newValue: content,
+        collaboratorIP
+      });
+    }
     
     const updatedNote = await Note.findByIdAndUpdate(
-      sharedNote.noteId._id,
-      { title, content, updatedAt: new Date() },
+      currentNote._id,
+      { 
+        ...(title && { title }),
+        ...(content && { content }),
+        updatedAt: new Date() 
+      },
       { new: true }
     );
     
@@ -150,10 +198,75 @@ const revokeShare = async (req, res) => {
   }
 };
 
+const getActivityLog = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+    
+    // Verify note ownership
+    const note = await Note.findOne({ _id: noteId, userId: req.user.id });
+    if (!note) {
+      return res.status(404).json({ error: 'Note not found or access denied' });
+    }
+    
+    const logs = await CollaborationLog.find({ noteId })
+      .sort({ timestamp: -1 })
+      .limit(50);
+    
+    res.json({ logs });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const revertChange = async (req, res) => {
+  try {
+    const { logId } = req.params;
+    
+    if (!logId || !logId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid log ID' });
+    }
+    
+    const log = await CollaborationLog.findById(logId).populate('noteId');
+    if (!log) {
+      return res.status(404).json({ error: 'Log entry not found' });
+    }
+    
+    // Verify note ownership
+    if (log.noteId.userId.toString() !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    if (log.isReverted) {
+      return res.status(400).json({ error: 'Change already reverted' });
+    }
+    
+    // Revert the change
+    const updateData = {};
+    if (log.changeType === 'title') {
+      updateData.title = log.oldValue;
+    } else if (log.changeType === 'content') {
+      updateData.content = log.oldValue;
+    }
+    updateData.updatedAt = new Date();
+    
+    await Note.findByIdAndUpdate(log.noteId._id, updateData);
+    
+    // Mark as reverted
+    log.isReverted = true;
+    await log.save();
+    
+    res.json({ message: 'Change reverted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createShareLink,
   getSharedNote,
   updateSharedNote,
   getMyShares,
-  revokeShare
+  revokeShare,
+  getActivityLog,
+  revertChange
 };

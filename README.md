@@ -10,6 +10,7 @@ A complete full-stack note management system with advanced features including me
 - **Memories & Journal** - Dedicated sections with PIN protection
 - **Advanced Settings** - User preferences with security controls
 - **Collaboration System** - Real-time sharing with custom permissions
+- **Activity Logging** - Track and revert collaborator changes
 - **Export Features** - PDF export functionality
 - **Advanced Organization** - Folders, search, sorting, recycle bin
 - **Security Features** - Rate limiting, data protection, section locks
@@ -44,7 +45,7 @@ A complete full-stack note management system with advanced features including me
 ### Database
 - **Database**: MongoDB Atlas
 - **Schema**: Mongoose Schema with relations
-- **Models**: User, Note, Folder, Memory, JournalEntry, SharedNote, OTP, RecycleBin, UserSettings
+- **Models**: User, Note, Folder, Memory, JournalEntry, SharedNote, OTP, RecycleBin, UserSettings, CollaborationLog
 - **Indexing**: Optimized queries with database indexes
 
 ### DevOps & Deployment
@@ -102,6 +103,8 @@ A complete full-stack note management system with advanced features including me
 | `/api/sharing/shared/:shareId` | PUT | Update shared note | Public (with edit permission) |
 | `/api/sharing/my-shares` | GET | Get user's shared notes | Authenticated |
 | `/api/sharing/shares/:shareId` | DELETE | Revoke share link | Authenticated |
+| `/api/sharing/notes/:noteId/activity-log` | GET | Get collaboration activity log | Authenticated (Owner only) |
+| `/api/sharing/revert/:logId` | POST | Revert collaborator change | Authenticated (Owner only) |
 
 ### Settings & Security
 | Endpoint | Method | Description | Access |
@@ -171,6 +174,9 @@ A complete full-stack note management system with advanced features including me
 - **Anonymous Access**: No login required for shared notes
 - **Real-time Editing**: Collaborative editing on shared notes
 - **Access Management**: Track and revoke share links
+- **Activity Logging**: Track all changes made by collaborators
+- **Change Reversion**: Owners can undo any collaborator changes
+- **IP Tracking**: Log collaborator IP addresses for security
 
 ### 🔍 Search & Organization
 - Global search across notes and folders by title/content
