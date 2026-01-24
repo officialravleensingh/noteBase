@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { recycleBinAPI } from '../../lib/api';
 import MainNavigation from '../../components/MainNavigation';
 
-const RecycleBinPage = () => {
+const RecycleBinContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentSection = searchParams.get('section') || 'notes';
@@ -373,6 +373,23 @@ const RecycleBinItem = ({ item, onRestore, onPermanentDelete }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const RecycleBinPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <MainNavigation />
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </div>
+      </div>
+    }>
+      <RecycleBinContent />
+    </Suspense>
   );
 };
 
