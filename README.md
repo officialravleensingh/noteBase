@@ -9,7 +9,7 @@ A complete full-stack note management system with advanced features including me
 - **Notes Management** - CRUD with rich text editor and auto-save
 - **Memories & Journal** - Dedicated sections with PIN protection
 - **Advanced Settings** - User preferences with security controls
-- **Collaboration System** - Real-time sharing with custom permissions
+- **Collaboration System** - Anonymous sharing with custom permissions
 - **Activity Logging** - Track and revert collaborator changes
 - **Export Features** - PDF export functionality
 - **Advanced Organization** - Folders, search, sorting, recycle bin
@@ -21,6 +21,7 @@ A complete full-stack note management system with advanced features including me
 - **AI Integration** - Text summarization and grammar correction
 - **Landing Page** - Marketing/welcome page
 - **UI Enhancements** - Final polish and animations
+- **Real-time Collaboration** - WebSocket implementation for live editing
 
 ## 🛠 Tech Stack
 
@@ -40,7 +41,7 @@ A complete full-stack note management system with advanced features including me
 - **Email Service**: Nodemailer (Gmail SMTP)
 - **Validation**: Express Validator
 - **PDF Generation**: Puppeteer
-- **Security**: CORS, Security Headers, Rate Limiting
+- **Security**: CORS, Custom Security Headers, Rate Limiting
 
 ### Database
 - **Database**: MongoDB Atlas
@@ -172,7 +173,7 @@ A complete full-stack note management system with advanced features including me
 - **Custom Expiration**: 1 day to 10 years (3650 days)
 - **Permission Control**: View-only or edit access levels
 - **Anonymous Access**: No login required for shared notes
-- **Real-time Editing**: Collaborative editing on shared notes
+- **Anonymous Editing**: Collaborative editing on shared notes with activity logging
 - **Access Management**: Track and revoke share links
 - **Activity Logging**: Track all changes made by collaborators
 - **Change Reversion**: Owners can undo any collaborator changes
@@ -338,9 +339,9 @@ noteBase/
 ### Phase 6: ✅ Collaboration System (Completed)
 - Smart sharing with secure, time-limited links
 - Permission control (view-only or edit access)
-- Real-time collaborative editing
+- Anonymous collaborative editing with activity logging
 - Access management and analytics
-- Anonymous editing capabilities
+- Change reversion capabilities
 
 ### Phase 7: 🚧 Final Features (In Progress)
 - **Dark Mode**: Theme switching functionality
