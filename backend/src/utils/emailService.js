@@ -10,6 +10,8 @@ const transporter = nodemailer.createTransport({
 
 const sendOTPEmail = async (email, otp, type) => {
   try {
+    console.log('Attempting to send email to:', email, 'OTP:', otp, 'Type:', type);
+    
     let subject, message;
     
     switch (type) {
@@ -72,7 +74,10 @@ const sendOTPEmail = async (email, otp, type) => {
       `
     };
     
-    await transporter.sendMail(mailOptions);
+    console.log('Sending email with options:', { from: mailOptions.from, to: mailOptions.to, subject: mailOptions.subject });
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', result.messageId);
     return true;
   } catch (error) {
     console.error('Email sending failed:', error);

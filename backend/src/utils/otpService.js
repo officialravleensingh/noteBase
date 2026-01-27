@@ -8,6 +8,17 @@ const generateOTP = () => {
 
 const createOTP = async (email, type) => {
   try {
+    console.log('Creating OTP for:', email, 'type:', type);
+    
+    // For signup, preserve existing metadata
+    let existingMetadata = null;
+    if (type === 'signup') {
+      const existingOTP = await OTP.findOne({ email, type });
+      if (existingOTP && existingOTP.metadata) {
+        existingMetadata = existingOTP.metadata;
+      }
+    }
+    
     await OTP.deleteMany({ email, type });
     
     const otp = generateOTP();
@@ -15,12 +26,15 @@ const createOTP = async (email, type) => {
       email,
       otp,
       type,
+      metadata: existingMetadata,
       expiresAt: new Date(Date.now() + VALIDATION_LIMITS.OTP_EXPIRY_MINUTES * 60 * 1000)
     });
     
     await otpDoc.save();
+    console.log('OTP created successfully:', otp);
     return otp;
   } catch (error) {
+    console.error('OTP creation error:', error);
     throw new Error('Failed to create OTP');
   }
 };

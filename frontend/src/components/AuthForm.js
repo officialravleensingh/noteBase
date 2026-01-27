@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import GoogleAuthButton from './GoogleAuthButton';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 export default function AuthForm({ mode, onSubmit, loading }) {
   const [formData, setFormData] = useState({
@@ -10,15 +11,37 @@ export default function AuthForm({ mode, onSubmit, loading }) {
     rememberMe: true
   });
   const [error, setError] = useState('');
+  const [passwordValid, setPasswordValid] = useState(false);
+
+  const validatePassword = (password) => {
+    const requirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    };
+    return Object.values(requirements).every(req => req);
+  };
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const newFormData = { ...formData, [e.target.name]: value };
+    setFormData(newFormData);
+    
+    if (mode === 'signup' && e.target.name === 'password') {
+      setPasswordValid(validatePassword(value));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (mode === 'signup' && !passwordValid) {
+      setError('Please meet all password requirements');
+      return;
+    }
     
     try {
       await onSubmit(formData);
@@ -69,9 +92,12 @@ export default function AuthForm({ mode, onSubmit, loading }) {
           value={formData.password}
           onChange={handleChange}
           required
-          minLength="6"
+          minLength="8"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
+        {mode === 'signup' && formData.password && (
+          <PasswordStrengthIndicator password={formData.password} />
+        )}
         {mode === 'login' && (
           <div className="flex justify-between items-center mt-2">
             <div className="flex items-center">
@@ -100,8 +126,12 @@ export default function AuthForm({ mode, onSubmit, loading }) {
       
       <button
         type="submit"
-        disabled={loading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        disabled={loading || (mode === 'signup' && !passwordValid)}
+        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+          loading || (mode === 'signup' && !passwordValid)
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-600 hover:bg-blue-700'
+        }`}
       >{loading ? 'Loading...' : mode === 'signup' ? 'Sign Up' : 'Login'}
       </button>
       </form>

@@ -9,36 +9,41 @@ const signup = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
+    // Check if verified user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
+    // Hash password and create OTP without saving user to database
     const hashedPassword = await hashPassword(password);
-
-    const user = new User({
-      email,
-      password: hashedPassword,
-      name: name || email.split('@')[0],
-      isVerified: false
-    });
-
-    await user.save();
-
     const otp = await createOTP(email, 'signup');
-    const emailSent = await sendOTPEmail(email, otp, 'signup');
+    
+    // Store user data temporarily in OTP metadata
+    await OTP.findOneAndUpdate(
+      { email, type: 'signup' },
+      { 
+        metadata: {
+          email,
+          password: hashedPassword,
+          name: name || email.split('@')[0]
+        }
+      }
+    );
 
+    const emailSent = await sendOTPEmail(email, otp, 'signup');
     if (!emailSent) {
-      await User.findByIdAndDelete(user._id);
+      await OTP.deleteMany({ email, type: 'signup' });
       return res.status(500).json({ error: 'Failed to send verification email' });
     }
 
+    console.log('Email sent successfully to:', email);
     res.status(201).json({
-      message: 'User created successfully. Please verify your email.',
-      userId: user._id,
-      email: user.email
+      message: 'Verification email sent. Please check your inbox.',
+      email: email
     });
   } catch (error) {
+    console.error('Signup error:', error);
     res.status(500).json({ error: `Server error: ${error.message}` });
   }
 };
@@ -52,15 +57,27 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
-    const user = await User.findOneAndUpdate(
-      { email },
-      { isVerified: true, lastLogin: new Date() },
-      { new: true }
-    ).select('-password');
-
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+    // Get user data from OTP metadata
+    const otpDoc = await OTP.findOne({ email, type: 'signup', isUsed: true });
+    if (!otpDoc || !otpDoc.metadata) {
+      return res.status(400).json({ error: 'Verification data not found' });
     }
+
+    const { password, name } = otpDoc.metadata;
+
+    // Now create the user in database
+    const user = new User({
+      email,
+      password,
+      name,
+      isVerified: true,
+      lastLogin: new Date()
+    });
+
+    await user.save();
+
+    // Clean up OTP
+    await OTP.deleteMany({ email, type: 'signup' });
 
     const { accessToken, refreshToken } = generateTokenPair(user._id);
 
@@ -94,10 +111,7 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    if (!user.isVerified) {
-      return res.status(400).json({ error: 'Please verify your email first' });
-    }
-
+    // All users in database are verified, so no need to check isVerified
     if (user.deletionScheduledAt) {
       await cancelAccountDeletion(user._id);
     }
@@ -170,9 +184,18 @@ const resendOTP = async (req, res) => {
   try {
     const { email, type } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+    if (type === 'signup') {
+      // For signup, check if there's existing OTP data
+      const existingOTP = await OTP.findOne({ email, type: 'signup' });
+      if (!existingOTP || !existingOTP.metadata) {
+        return res.status(400).json({ error: 'No pending signup found. Please start signup process again.' });
+      }
+    } else {
+      // For other types, check if user exists
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ error: 'User not found' });
+      }
     }
 
     const otp = await createOTP(email, type);
